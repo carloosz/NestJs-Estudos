@@ -60,6 +60,9 @@ export class UserDto implements UserInterface {
   active!: boolean;
 
   @Expose()
+  confirmed!: boolean;
+
+  @Expose()
   @Transform(({ obj }) =>
     obj.userRoles.map((userRole: UserRole) => userRole.role.name),
   )

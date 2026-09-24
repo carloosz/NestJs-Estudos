@@ -11,7 +11,7 @@ export class UserRole extends CommonEntity {
     @Column()
     roleId!: string;
 
-    @ManyToOne(() => User, (user) => user.userRoles)
+    @ManyToOne(() => User, (user) => user.userRoles, { onDelete: "CASCADE" })
     user!: User;
 
     @ManyToOne(() => Role, (role) => role.userRoles)

@@ -20,6 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@nestjs-modules/mailer": "^2.3.7",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
@@ -31,9 +32,12 @@
     "@nestjs/typeorm": "^11.0.3",
     "@sentry/node": "^10.74.0",
     "@sentry/types": "^10.74.0",
+    "axios": "^1.20.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "handlebars": "^4.7.9",
+    "nodemailer": "^10.0.10",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
@@ -50,6 +54,7 @@
     "@nestjs/testing": "^11.0.1",
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.0",
+    "@types/inline-css": "^3.0.4",
     "@types/jest": "^30.0.0",
     "@types/multer": "^2.2.0",
     "@types/node": "^24.0.0",

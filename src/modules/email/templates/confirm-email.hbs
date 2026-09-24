@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+   <meta charset="utf-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+   <title>Confirme seu email</title>
+</head>
+
+<body style="margin:0; padding:0; background-color:#0d0b14; font-family: Arial, Helvetica, sans-serif;">
+   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+      style="background-color:#0d0b14; padding: 40px 0;">
+      <tr>
+         <td align="center">
+            <table role="presentation" width="480" cellpadding="0" cellspacing="0"
+               style="background-color:#1a1625; border-radius: 16px; overflow: hidden;">
+
+               <!-- Header com gradiente roxo -->
+               <tr>
+                  <td
+                     style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); padding: 32px 40px 24px 40px; text-align: center;">
+                     <h1 style="margin:0; color:#ffffff; font-size: 22px; font-weight: 700;">
+                        Confirme seu email
+                     </h1>
+                  </td>
+               </tr>
+
+               <!-- Corpo -->
+               <tr>
+                  <td style="padding: 32px 40px;">
+                     <p style="margin:0 0 16px 0; color:#e5e0f0; font-size: 15px; line-height: 22px;">
+                        Olá, <strong>{{name}}</strong>!
+                     </p>
+                     <p style="margin:0 0 28px 0; color:#a89fc2; font-size: 14px; line-height: 22px;">
+                        Falta pouco para começar a registrar seus filmes e explorar o que seus amigos andam assistindo.
+                        Clique no botão abaixo para confirmar seu email.
+                     </p>
+
+                     <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                        <tr>
+                           <td align="center"
+                              style="border-radius: 10px; background: linear-gradient(135deg, #8b5cf6, #6d28d9);">
+                              <a href="{{confirmUrl}}"
+                                 style="display:inline-block; padding: 14px 32px; font-size: 14px; font-weight: 700; color:#ffffff; text-decoration:none; border-radius: 10px;">
+                                 Confirmar email
+                              </a>
+                           </td>
+                        </tr>
+                     </table>
+
+                     <p
+                        style="margin:28px 0 0 0; color:#6b6284; font-size: 12px; line-height: 18px; text-align:center;">
+                        Se o botão não funcionar, copie e cole este link no navegador:<br />
+                        <a href="{{confirmUrl}}" style="color:#a78bfa; word-break: break-all;">{{confirmUrl}}</a>
+                     </p>
+                  </td>
+               </tr>
+
+               <!-- Footer -->
+               <tr>
+                  <td style="padding: 20px 40px; border-top: 1px solid #2a2438; text-align:center;">
+                     <p style="margin:0; color:#524a68; font-size: 11px;">
+                        Se você não criou uma conta, pode ignorar este email.
+                     </p>
+                  </td>
+               </tr>
+
+            </table>
+         </td>
+      </tr>
+   </table>
+</body>
+
+</html>
