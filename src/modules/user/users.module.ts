@@ -19,7 +19,7 @@ import { EmailModule } from '../email/email.module';
          imports: [ConfigModule],
          inject: [jwtConfig.KEY],
          useFactory: (config: ConfigType<typeof jwtConfig>) => ({
-         secret: config.secret,
+            secret: config.access.secret as string,
          }),
       }),
       EmailModule
