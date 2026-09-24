@@ -122,6 +122,7 @@ export class UserService {
             userRoles: {
                role: true,
             },
+            uploads: true
          },
       });
 

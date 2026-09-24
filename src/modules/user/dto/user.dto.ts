@@ -3,6 +3,7 @@ import { UserInterface } from '../interfaces/user.interface';
 import { Exclude, Expose, Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { Upload } from 'src/modules/upload/entities/upload.entity';
 
 @Exclude()
 export class UserDto implements UserInterface {
@@ -67,4 +68,7 @@ export class UserDto implements UserInterface {
     obj.userRoles.map((userRole: UserRole) => userRole.role.name),
   )
   roles: string[] = [];
+
+  @Expose()
+  uploads: Upload[] = [];
 }

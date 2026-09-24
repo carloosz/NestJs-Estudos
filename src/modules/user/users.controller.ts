@@ -7,6 +7,7 @@ import {
    Delete,
    Param,
    Res,
+   UseGuards,
 } from '@nestjs/common';
 import { UserService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -14,6 +15,12 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { IsUUIDParam } from '../../common/decorators/is-uuidparam.decorator';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { User } from './entities/user.entity';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth-guard';
+import { RoleGuard } from '../role/guards/role.guard';
+import { Roles } from '../role/decorator/roles.decorator';
+import { RoleEnum } from '../role/enum/role.enum';
 
 @ApiTags('users')
 @Controller('users')
@@ -38,6 +45,14 @@ export class UserController {
       const html = await this.userService.confirmEmailPage(token);
       res.setHeader('Content-Type', 'text/html');
       res.send(html);
+   }
+
+   @ApiOperation({ summary: 'Find logged user' })
+   @Get('me')
+   @UseGuards(JwtAuthGuard, RoleGuard)
+   @Roles(RoleEnum.Authenticated)
+   me(@CurrentUser() user: User) {
+      return this.userService.findOne(user.id);
    }
 
    @ApiOperation({ summary: 'Find one user' })

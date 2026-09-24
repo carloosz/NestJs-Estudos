@@ -4,6 +4,7 @@ import { Unique } from 'typeorm';
 import { CommonEntity } from '../../../common/common.entity';
 import { Column, OneToMany } from 'typeorm';
 import { UserRole } from 'src/modules/user-role/entities/user-role.entity';
+import { Upload } from 'src/modules/upload/entities/upload.entity';
 
 @Entity()
 @Unique(['username', 'email'])
@@ -36,4 +37,7 @@ export class User extends CommonEntity implements UserInterface {
 
    @Column({ type: 'boolean', nullable: false, default: false})
    confirmed?: boolean;
+
+   @OneToMany(() => Upload, (upload) => upload.user)
+   uploads!: Upload[];
 }
