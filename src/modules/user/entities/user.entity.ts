@@ -40,4 +40,10 @@ export class User extends CommonEntity implements UserInterface {
 
    @OneToMany(() => Upload, (upload) => upload.user)
    uploads!: Upload[];
+
+   @Column({ type: 'uuid', nullable: true })
+   resetToken!: string | null;
+
+   @Column({ type: 'timestamp', nullable: true })
+   resetTokenExp!: Date | null;
 }
