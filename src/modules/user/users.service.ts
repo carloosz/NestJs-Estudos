@@ -34,11 +34,12 @@ export class UserService {
    ) {
       this.loggerService.setContext(UserService.name);
    }
+
    public async create(createUserDto: CreateUserDto): Promise<UserDto> {
       const existingUser = await this.userRepository.findOne({
          where: [
             { username: createUserDto.username },
-            { email: createUserDto.email },
+            { email: createUserDto.email.toLowerCase() },
          ],
       });
 
@@ -68,6 +69,7 @@ export class UserService {
 
       const user = this.userRepository.create({
          ...createUserDto,
+         email: createUserDto.email.toLowerCase(),
          userRoles,
       });
 
