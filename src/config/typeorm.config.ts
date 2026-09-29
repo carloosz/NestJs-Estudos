@@ -11,7 +11,7 @@ export const typeormConfig = registerAs(
             process.env.DATABASE_URL ||
             'postgres://postgres:postgre@localhost:5432/nestjs',
          entities: [__dirname + '/**/*.entity{.ts,.js}'],
-         synchronize: true,
+         synchronize: false,
          autoLoadEntities: true,
          logging: true,
          logger: 'file',
