@@ -2,7 +2,7 @@ import { UserRole } from 'src/modules/user-role/entities/user-role.entity';
 import { UserInterface } from '../interfaces/user.interface';
 import { Exclude, Expose, Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, IsBoolean } from 'class-validator';
 import { Upload } from 'src/modules/upload/entities/upload.entity';
 
 @Exclude()
@@ -58,6 +58,11 @@ export class UserDto implements UserInterface {
   email!: string;
 
   @Expose()
+  @ApiProperty({
+    description: 'Whether the user is active',
+    example: true,
+  })
+  @IsBoolean({ message: 'O active deve ser um boolean' })
   active!: boolean;
 
   @Expose()

@@ -2,6 +2,7 @@ import {
    BadRequestException,
    Injectable,
    NotFoundException,
+   InternalServerErrorException
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -17,6 +18,8 @@ import { LoggerService } from 'src/modules/logger/logger.service';
 import { EmailService } from 'src/modules/email/email.service';
 import { TemplateService } from 'src/modules/email/template.service';
 import { JwtService } from '@nestjs/jwt';
+import { randomUUID } from 'crypto';
+import { MoreThanOrEqual } from 'typeorm';
 
 @Injectable()
 export class UserService {
@@ -30,7 +33,7 @@ export class UserService {
       private loggerService: LoggerService,
       private readonly emailService: EmailService,
       private readonly templateService: TemplateService,
-      private readonly jwtService: JwtService
+      private readonly jwtService: JwtService,
    ) {
       this.loggerService.setContext(UserService.name);
    }
@@ -77,10 +80,10 @@ export class UserService {
 
       const token = this.jwtService.sign(
          { sub: savedUser.id, purpose: 'email-confirmation' },
-         { expiresIn: '1d' }
+         { expiresIn: '1d' },
       );
 
-      const confirmUrl = `${ process.env.BACKEND_URL || 'http://localhost:3000' }/users/confirm-email/${token}`;
+      const confirmUrl = `${process.env.BACKEND_URL || 'http://localhost:3000'}/users/confirm-email/${token}`;
 
       try {
          await this.emailService.send({
@@ -89,7 +92,7 @@ export class UserService {
             template: 'confirm-email',
             context: {
                name: savedUser.firstName,
-               confirmUrl: confirmUrl
+               confirmUrl: confirmUrl,
             },
          });
       } catch (e) {
@@ -124,7 +127,7 @@ export class UserService {
             userRoles: {
                role: true,
             },
-            uploads: true
+            uploads: true,
          },
       });
 
@@ -204,6 +207,89 @@ export class UserService {
             loginUrl,
             message,
          });
+      }
+   }
+
+   /**
+    * Generate a new token for resetToken and
+    * add expiration Token date
+    *
+    * @param email email to try to find the user
+    * @param ttlMinutes times in minutes of how long token will be expired
+    * @return Promise<User>
+    */
+   async updateResetTokenByEmail(
+      email: string,
+      ttlMinutes: number,
+   ): Promise<User | undefined> {
+      // try to find the user by email
+      const user = await this.userRepository.findOne({ where: { email } });
+
+      if (user) {
+         return this.updateResetToken(user, ttlMinutes);
+      } else {
+         return;
+      }
+   }
+
+   /**
+    * Generate a new reset token and save it on user with its expiration date
+    *
+    * @return User with new info
+    * @param user
+    * @param ttlMinutes
+    */
+   private async updateResetToken(
+      user: User,
+      ttlMinutes: number,
+   ): Promise<User | undefined> {
+      // current date
+      const now = new Date();
+
+      // new user token is a random uuid
+      user.resetToken = randomUUID();
+
+      // set the token expiration date
+      user.resetTokenExp = new Date(now.getTime() + ttlMinutes * 60 * 1000);
+
+      // call repo to persist it
+      return this.userRepository.save(user);
+   }
+
+   /**
+    * Update password if resetToken is valid
+    *
+    * @param resetToken rest Token that was sent to the email
+    * @return Promise<User | null>
+    */
+   async updatePassword(
+      resetToken: string,
+      password: string,
+   ): Promise<User | null> {
+      // lookup user by reset token and get user with token not expired
+      const user = await this.userRepository.findOne({
+         where: {
+            resetToken,
+            resetTokenExp: MoreThanOrEqual<Date>(new Date()),
+         },
+      });
+
+      // got a user?
+      if (user) {
+         // yes, set the new password and overwrite token and exp
+         user.password = password;
+         user.resetToken = null;
+         user.resetTokenExp = null;
+         // try to save it
+         try {
+            return this.userRepository.save(user);
+         } catch (error) {
+            throw new InternalServerErrorException(
+               'Updating user password failed.',
+            );
+         }
+      } else {
+         throw new NotFoundException('Invalid token');
       }
    }
 }
