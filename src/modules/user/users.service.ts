@@ -19,7 +19,7 @@ import { EmailService } from 'src/modules/email/email.service';
 import { TemplateService } from 'src/modules/email/template.service';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
-import { MoreThanOrEqual } from 'typeorm';
+import { MoreThanOrEqual, Not } from 'typeorm';
 
 @Injectable()
 export class UserService {
@@ -146,6 +146,17 @@ export class UserService {
       id: string,
       updateUserDto: UpdateUserDto,
    ): Promise<UserDto> {
+      const duplicatedNickname = await this.userRepository.findOne({
+         where: {
+            nickname: updateUserDto.nickname,
+            id: Not(id),
+         },
+      })
+
+      if (duplicatedNickname) {
+         throw new BadRequestException('Nickname não disponível');
+      }
+
       await this.userRepository.update({ id }, updateUserDto);
       return await this.findOne(id);
    }
