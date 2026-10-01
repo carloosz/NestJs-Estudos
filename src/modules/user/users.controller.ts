@@ -67,9 +67,11 @@ export class UserController {
       return this.userService.update(id, updateUserDto);
    }
 
-   @ApiOperation({ summary: 'Delete user' })
-   @Delete(':id')
-   remove(@IsUUIDParam('id') id: string) {
-      return this.userService.remove(id);
+   @ApiOperation({ summary: 'Delete logged user' })
+   @Delete('delete-my-account')
+   @UseGuards(JwtAuthGuard, RoleGuard)
+   @Roles(RoleEnum.Authenticated)
+   remove(@CurrentUser() user: User) {
+      return this.userService.remove(user.id);
    }
 }
