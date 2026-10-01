@@ -59,30 +59,21 @@ export class UserService {
          }));
       } while (exists);
 
-      if (createUserDto.roles.length === 0) {
-         throw new BadRequestException(
-            'Erro: O usuário deve ter pelo menos uma role!',
-         );
+      const defaultRole = 'authenticated';
+
+      const role = await this.roleRepository.findOneBy({ name: defaultRole });
+      if (!role) {
+         throw new NotFoundException(`Role ${defaultRole} not found`);
       }
 
-      const roles = await this.roleRepository.find({
-         where: { name: In(createUserDto.roles) },
+      const userRole = await this.userRoleRepository.create({
+         role,
       });
-
-      if (roles.length !== createUserDto.roles.length) {
-         throw new BadRequestException(
-            'Erro: Uma ou mais roles informadas não existem!',
-         );
-      }
-
-      const userRoles = roles.map((role) =>
-         this.userRoleRepository.create({ role }),
-      );
 
       const user = this.userRepository.create({
          ...createUserDto,
          email: createUserDto.email.toLowerCase(),
-         userRoles,
+         userRoles: [userRole],
       });
 
       const savedUser = await this.userRepository.save(user);

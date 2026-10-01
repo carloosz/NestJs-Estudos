@@ -15,12 +15,4 @@ export class CreateUserDto
   @IsString({ message: 'O password deve ser uma string' })
   @MinLength(8, { message: 'O password deve ter no mínimo 8 caracteres' })
   password!: string;
-
-  @ApiProperty({
-    description: 'The roles of the user',
-    example: ['admin', 'user'],
-  })
-  @IsNotEmpty({ message: 'O roles deve ser informado' })
-  @IsString({ each: true, message: 'O roles deve ser um array de strings' })
-  roles: string[] = [];
 }
