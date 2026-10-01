@@ -63,6 +63,8 @@ export class UserController {
 
    @ApiOperation({ summary: 'Update logged user' })
    @Patch('edit-my-account')
+   @UseGuards(JwtAuthGuard, RoleGuard)
+   @Roles(RoleEnum.Authenticated)
    update(@CurrentUser() user: User, @Body() updateUserDto: UpdateUserDto) {
       return this.userService.update(user.id, updateUserDto);
    }
