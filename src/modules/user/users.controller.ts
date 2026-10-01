@@ -21,6 +21,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth-guard';
 import { RoleGuard } from '../role/guards/role.guard';
 import { Roles } from '../role/decorator/roles.decorator';
 import { RoleEnum } from '../role/enum/role.enum';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @ApiTags('users')
 @Controller('users')
@@ -75,5 +76,21 @@ export class UserController {
    @Roles(RoleEnum.Authenticated)
    remove(@CurrentUser() user: User) {
       return this.userService.remove(user.id);
+   }
+
+   @ApiOperation({ summary: 'Change logged user password' })
+   @Patch('change-password')
+   @UseGuards(JwtAuthGuard, RoleGuard)
+   @Roles(RoleEnum.Authenticated)
+   async changePassword(
+      @CurrentUser() user: User,
+      @Body() changePasswordDto: ChangePasswordDto,
+   ) {
+      return await this.userService.changePassword(
+         user.id,
+         changePasswordDto.currentPassword,
+         changePasswordDto.newPassword,
+         changePasswordDto.confirmNewPassword,
+      );
    }
 }

@@ -151,7 +151,7 @@ export class UserService {
             nickname: updateUserDto.nickname,
             id: Not(id),
          },
-      })
+      });
 
       if (duplicatedNickname) {
          throw new BadRequestException('Nickname não disponível');
@@ -302,6 +302,42 @@ export class UserService {
          }
       } else {
          throw new NotFoundException('Invalid token');
+      }
+   }
+
+   async changePassword(
+      userId: string,
+      currentPassword: string,
+      newPassword: string,
+      confirmNewPassword: string
+   ): Promise<{ message: string }> {
+      const user = await this.userRepository.findOneBy({ id: userId });
+
+      if (!user) {
+         throw new NotFoundException('User not found');
+      }
+
+      const isCurrentPasswordValid = await CryptUtil.validatePassword(
+         currentPassword,
+         user.password,
+         user.salt
+      );
+
+      if (!isCurrentPasswordValid) {
+         throw new BadRequestException('Senha atual inválida');
+      }
+
+      if (newPassword !== confirmNewPassword) {
+         throw new BadRequestException('As novas senhas não coincidem');
+      }
+
+      user.password = newPassword;
+
+      try {
+         await this.userRepository.save(user);
+         return { message: 'Password changed successfully' };
+      } catch (error) {
+         throw new BadRequestException('Falha ao atualizar a senha do usuário');
       }
    }
 }
