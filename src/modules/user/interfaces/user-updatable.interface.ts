@@ -1,5 +1,5 @@
 export interface UserUpdatableInterface {
-    firstName?: string;
-    lastName?: string;
-    active?: boolean;
+   name?: string;
+   nickname?: string;
+   active?: boolean;
 }

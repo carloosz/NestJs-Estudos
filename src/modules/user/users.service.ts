@@ -39,16 +39,25 @@ export class UserService {
    }
 
    public async create(createUserDto: CreateUserDto): Promise<UserDto> {
-      const existingUser = await this.userRepository.findOne({
-         where: [
-            { username: createUserDto.username },
-            { email: createUserDto.email.toLowerCase() },
-         ],
-      });
+      const email = createUserDto.email.toLowerCase();
 
-      if (existingUser) {
+      const emailExists = await this.userRepository.findOne({
+         where: { email },
+      });
+      if (emailExists) {
          throw new BadRequestException('Erro: Dados já cadastrados!');
       }
+
+      const base = createUserDto.name.replace(/\s+/g, '');
+      let nickname: string;
+      let exists = true;
+
+      do {
+         nickname = `${base}_${Math.floor(Math.random() * 100000)}`;
+         exists = !!(await this.userRepository.findOne({
+            where: { nickname },
+         }));
+      } while (exists);
 
       if (createUserDto.roles.length === 0) {
          throw new BadRequestException(
@@ -91,7 +100,7 @@ export class UserService {
             subject: 'Confirme seu email',
             template: 'confirm-email',
             context: {
-               name: savedUser.firstName,
+               name: savedUser.name,
                confirmUrl: confirmUrl,
             },
          });
@@ -158,7 +167,7 @@ export class UserService {
       password: string,
    ): Promise<UserDto | null> {
       const user = await this.userRepository.findOne({
-         where: [{ email }, { username: email }],
+         where: [{ email }, { nickname: email }],
          relations: {
             userRoles: {
                role: true,

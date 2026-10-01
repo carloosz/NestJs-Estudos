@@ -1,8 +1,10 @@
 export interface UserInterface {
-    firstName: string;
-    lastName: string;
-    username: string;
-    password: string;
-    salt: string;
-    active: boolean;
+   nickname: string;
+   name: string;
+   password: string;
+   salt: string;
+   active: boolean;
+   bio?: string;
+   location?: string
+   socialmedia?: string
 }

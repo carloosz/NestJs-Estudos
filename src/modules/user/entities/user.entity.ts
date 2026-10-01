@@ -7,10 +7,10 @@ import { UserRole } from 'src/modules/user-role/entities/user-role.entity';
 import { Upload } from 'src/modules/upload/entities/upload.entity';
 
 @Entity()
-@Unique(['username', 'email'])
+@Unique(['nickname', 'email'])
 export class User extends CommonEntity implements UserInterface {
    @Column({ type: 'citext', nullable: false })
-   username!: string;
+   name!: string;
 
    @Column({ type: 'text', nullable: false })
    password!: string;
@@ -18,11 +18,8 @@ export class User extends CommonEntity implements UserInterface {
    @Column({ type: 'text', nullable: false, default: 'salt' })
    salt!: string;
 
-   @Column({ type: 'citext', nullable: true })
-   firstName!: string;
-
-   @Column({ type: 'citext', nullable: true })
-   lastName!: string;
+   @Column({ type: 'citext', nullable: false })
+   nickname!: string;
 
    @Column({ type: 'citext', nullable: false })
    email!: string;
@@ -46,4 +43,13 @@ export class User extends CommonEntity implements UserInterface {
 
    @Column({ type: 'timestamp', nullable: true })
    resetTokenExp!: Date | null;
+
+   @Column({ type: 'text', nullable: true })
+   bio!: string;
+
+   @Column({ type: 'text', nullable: true })
+   location!: string;
+
+   @Column({ type: 'text', nullable: true })
+   socialmedia!: string;
 }

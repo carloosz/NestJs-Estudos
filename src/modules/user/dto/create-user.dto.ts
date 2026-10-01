@@ -4,7 +4,7 @@ import { ApiProperty, PickType } from '@nestjs/swagger';
 import { UserDto } from './user.dto';
 
 export class CreateUserDto
-  extends PickType(UserDto, ['username', 'firstName', 'lastName', 'email'])
+  extends PickType(UserDto, ['name', 'email'])
   implements UserCreatableInterface
 {
   @ApiProperty({

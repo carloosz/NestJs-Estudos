@@ -17,35 +17,24 @@ export class UserDto implements UserInterface {
   updatedAt!: Date;
 
   @Expose()
+  @IsString({ message: 'O name deve ser uma string' })
   @ApiProperty({
-    description: 'The username of the user',
+    description: 'The name of the user',
+    example: 'John Doe',
+  })
+  name!: string;
+
+  @Expose()
+  @IsString({ message: 'O nickname deve ser uma string' })
+  @ApiProperty({
+    description: 'The nickname of the user',
     example: 'johndoe',
   })
-  @IsNotEmpty({ message: 'O username deve ser informado' })
-  @IsString({ message: 'O username deve ser uma string' })
-  username!: string;
+  nickname!: string;
 
   password!: string;
 
   salt!: string;
-
-  @Expose()
-  @ApiProperty({
-    description: 'The first name of the user',
-    example: 'John',
-  })
-  @IsNotEmpty({ message: 'O firstName deve ser informado' })
-  @IsString({ message: 'O firstName deve ser uma string' })
-  firstName!: string;
-
-  @Expose()
-  @ApiProperty({
-    description: 'The last name of the user',
-    example: 'Doe',
-  })
-  @IsNotEmpty({ message: 'O lastName deve ser informado' })
-  @IsString({ message: 'O lastName deve ser uma string' })
-  lastName!: string;
 
   @Expose()
   @ApiProperty({
@@ -76,4 +65,13 @@ export class UserDto implements UserInterface {
 
   @Expose()
   uploads: Upload[] = [];
+
+  @Expose()
+  bio?: string;
+
+  @Expose()
+  location?: string;
+
+  @Expose()
+  socialmedia?: string;
 }
