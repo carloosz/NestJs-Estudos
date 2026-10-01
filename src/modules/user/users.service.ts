@@ -99,7 +99,7 @@ export class UserService {
          // já logado dentro do EmailService — cadastro segue normal
       }
 
-      return plainToInstance(UserDto, { ...savedUser, roles });
+      return plainToInstance(UserDto, { ...savedUser, roles: [role] });
    }
 
    public async findAll(): Promise<UserDto[]> {
