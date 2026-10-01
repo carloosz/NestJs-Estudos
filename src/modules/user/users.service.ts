@@ -72,6 +72,7 @@ export class UserService {
 
       const user = this.userRepository.create({
          ...createUserDto,
+         nickname,
          email: createUserDto.email.toLowerCase(),
          userRoles: [userRole],
       });
