@@ -61,10 +61,10 @@ export class UserController {
       return await this.userService.findOne(id);
    }
 
-   @ApiOperation({ summary: 'Update user' })
-   @Patch(':id')
-   update(@IsUUIDParam('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-      return this.userService.update(id, updateUserDto);
+   @ApiOperation({ summary: 'Update logged user' })
+   @Patch('edit-my-account')
+   update(@CurrentUser() user: User, @Body() updateUserDto: UpdateUserDto) {
+      return this.userService.update(user.id, updateUserDto);
    }
 
    @ApiOperation({ summary: 'Delete logged user' })

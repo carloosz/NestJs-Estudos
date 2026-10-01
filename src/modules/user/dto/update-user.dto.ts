@@ -3,5 +3,5 @@ import { UserDto } from './user.dto';
 import { PickType } from '@nestjs/swagger';
 
 export class UpdateUserDto
-  extends PickType(UserDto, ['name', 'nickname', 'active'])
+  extends PickType(UserDto, ['name', 'nickname', 'active', 'bio', 'location', 'socialmedia'])
   implements UserUpdatableInterface {}
