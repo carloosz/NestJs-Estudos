@@ -48,7 +48,7 @@ export class UserService {
          throw new BadRequestException('Erro: Dados já cadastrados!');
       }
 
-      const base = createUserDto.name.replace(/\s+/g, '');
+      const base = createUserDto.name.replace(/\s+/g, '').toLowerCase();
       let nickname: string;
       let exists = true;
 
