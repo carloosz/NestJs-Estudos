@@ -356,17 +356,19 @@ export class UserService {
 
       const genresArray = filmGenres.split(',').map((genre) => genre.trim());
 
-      if (genresArray.length > 5) {
+      const uniqueGenres = new Set(genresArray);
+
+      if (uniqueGenres.size > 5) {
          throw new BadRequestException(
             'You can select up to 5 favorite film genres',
          );
       }
 
-      if (!genresArray.every((genre) => enumValues.includes(genre))) {
+      if (!Array.from(uniqueGenres).every((genre) => enumValues.includes(genre))) {
          throw new BadRequestException('Invalid film genres');
       }
 
-      user.filmGenres = filmGenres;
+      user.filmGenres = Array.from(uniqueGenres).join(',');
 
       try {
          const updatedUser = await this.userRepository.save(user);
