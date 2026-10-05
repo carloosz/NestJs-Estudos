@@ -14,12 +14,17 @@ import { jwtConfig } from './config/jwt.config';
 import { LoggerModule } from './modules/logger/logger.module';
 import { ApiKeyMiddleware } from './modules/auth/middleware/api-key.middleware';
 import { UploadModule } from './modules/upload/upload.module';
+import { loggerConfig } from './config/logger.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [typeormConfig, jwtConfig],
+      load: [
+         typeormConfig,
+         jwtConfig,
+         loggerConfig,
+      ],
     }),
     TypeOrmModule.forRootAsync({
       inject: [typeormConfig.KEY],
