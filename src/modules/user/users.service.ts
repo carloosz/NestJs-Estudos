@@ -376,7 +376,7 @@ export class UserService {
       } catch (error) {
          console.log(error);
          throw new BadRequestException(
-            'Falha ao atualizar os gêneros favoritos do usuário',
+            'Falha ao atualizar os gêneros favoritos do usuário ',
          );
       }
    }
