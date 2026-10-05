@@ -7,4 +7,5 @@ export interface UserInterface {
    bio?: string;
    location?: string
    socialmedia?: string
+   filmGenres?: string
 }

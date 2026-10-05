@@ -52,4 +52,7 @@ export class User extends CommonEntity implements UserInterface {
 
    @Column({ type: 'text', nullable: true })
    socialmedia!: string;
+
+   @Column({ type: 'text', nullable: true })
+   filmGenres!: string;
 }

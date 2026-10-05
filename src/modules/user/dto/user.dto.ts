@@ -89,4 +89,12 @@ export class UserDto implements UserInterface {
    })
    @IsString({ message: 'O social media deve ser uma string' })
    socialmedia?: string;
+
+   @Expose()
+   @ApiProperty({
+      description: 'The favorite film genres of the user',
+      example: 'Ação, Comédia, Drama',
+   })
+   @IsString({ message: 'O film genres deve ser uma string' })
+   filmGenres?: string;
 }
