@@ -22,6 +22,7 @@ import { RoleGuard } from '../role/guards/role.guard';
 import { Roles } from '../role/decorator/roles.decorator';
 import { RoleEnum } from '../role/enum/role.enum';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { ChangeFilmGenresDto } from './dto/change-film-genres.dto';
 
 @ApiTags('users')
 @Controller('users')
@@ -100,8 +101,8 @@ export class UserController {
    @Roles(RoleEnum.Authenticated)
    async changeFilmGenres(
       @CurrentUser() user: User,
-      @Body('filmGenres') filmGenres: string,
+      @Body() changeFilmGenresDto: ChangeFilmGenresDto,
    ) {
-      return await this.userService.changeFilmGenres(user.id, filmGenres);
+      return await this.userService.changeFilmGenres(user.id, changeFilmGenresDto.filmGenres);
    }
 }
