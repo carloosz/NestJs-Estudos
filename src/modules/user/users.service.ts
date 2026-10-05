@@ -20,6 +20,7 @@ import { TemplateService } from 'src/modules/email/template.service';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
 import { MoreThanOrEqual, Not } from 'typeorm';
+import { FilmGenresEnum } from './enum/film-genres.enum';
 
 @Injectable()
 export class UserService {
@@ -309,7 +310,7 @@ export class UserService {
       userId: string,
       currentPassword: string,
       newPassword: string,
-      confirmNewPassword: string
+      confirmNewPassword: string,
    ): Promise<{ message: string }> {
       const user = await this.userRepository.findOneBy({ id: userId });
 
@@ -320,7 +321,7 @@ export class UserService {
       const isCurrentPasswordValid = await CryptUtil.validatePassword(
          currentPassword,
          user.password,
-         user.salt
+         user.salt,
       );
 
       if (!isCurrentPasswordValid) {
@@ -338,6 +339,42 @@ export class UserService {
          return { message: 'Password changed successfully' };
       } catch (error) {
          throw new BadRequestException('Falha ao atualizar a senha do usuário');
+      }
+   }
+
+   async changeFilmGenres(
+      userId: string,
+      filmGenres: string,
+   ): Promise<UserDto> {
+      const user = await this.userRepository.findOneBy({ id: userId });
+
+      if (!user) {
+         throw new NotFoundException('User not found');
+      }
+
+      const enumValues: string[] = Object.values(FilmGenresEnum);
+
+      const genresArray = filmGenres.split(',').map((genre) => genre.trim());
+
+      if (genresArray.length > 5) {
+         throw new BadRequestException(
+            'You can select up to 5 favorite film genres',
+         );
+      }
+
+      if (!genresArray.every((genre) => enumValues.includes(genre))) {
+         throw new BadRequestException('Invalid film genres');
+      }
+
+      user.filmGenres = filmGenres;
+
+      try {
+         const updatedUser = await this.userRepository.save(user);
+         return plainToInstance(UserDto, updatedUser);
+      } catch (error) {
+         throw new BadRequestException(
+            'Falha ao atualizar os gêneros favoritos do usuário',
+         );
       }
    }
 }

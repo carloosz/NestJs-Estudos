@@ -93,4 +93,15 @@ export class UserController {
          changePasswordDto.confirmNewPassword,
       );
    }
+
+   @ApiOperation({ summary: 'Change logged user favorite film genres' })
+   @Patch('change-film-genres')
+   @UseGuards(JwtAuthGuard, RoleGuard)
+   @Roles(RoleEnum.Authenticated)
+   async changeFilmGenres(
+      @CurrentUser() user: User,
+      @Body('filmGenres') filmGenres: string,
+   ) {
+      return await this.userService.changeFilmGenres(user.id, filmGenres);
+   }
 }
