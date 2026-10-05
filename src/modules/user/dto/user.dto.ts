@@ -59,7 +59,7 @@ export class UserDto implements UserInterface {
 
    @Expose()
    @Transform(({ obj }) =>
-      obj.userRoles.map((userRole: UserRole) => userRole.role.name),
+      obj.userRoles?.map((userRole: UserRole) => userRole?.role?.name),
    )
    roles: string[] = [];
 

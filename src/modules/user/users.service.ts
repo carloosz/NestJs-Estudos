@@ -372,6 +372,7 @@ export class UserService {
          const updatedUser = await this.userRepository.save(user);
          return plainToInstance(UserDto, updatedUser);
       } catch (error) {
+         console.log(error);
          throw new BadRequestException(
             'Falha ao atualizar os gêneros favoritos do usuário',
          );
