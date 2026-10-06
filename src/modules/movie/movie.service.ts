@@ -16,7 +16,7 @@ export class MovieService {
          id: m.id,
          title: m.title,
          year: m.release_date?.slice(0, 4) ?? null,
-         rating: (Math.round(m.vote_average * 10) / 10) / 2,
+         rating: Math.round(m.vote_average * 10) / 10 / 2,
          poster: img(m.poster_path, 'w500'),
          backdrop: img(m.backdrop_path, 'w1280'),
       };
@@ -28,7 +28,12 @@ export class MovieService {
    }
 
    async search(query: string, page = 1) {
-      const data = await this.tmdb.search(query, page);
+      const q = query?.trim().toLowerCase();
+
+      if (!q) return { page: 1, totalPages: 0, results: [] };
+
+      const data = await this.tmdb.search(q, page);
+
       return {
          page: data.page,
          totalPages: data.total_pages,
