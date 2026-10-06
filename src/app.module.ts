@@ -17,6 +17,7 @@ import { UploadModule } from './modules/upload/upload.module';
 import { loggerConfig } from './config/logger.config';
 import { TmdbModule } from './modules/tmdb/tmdb.module';
 import { MovieModule } from './modules/movie/movie.module';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
@@ -31,6 +32,9 @@ import { MovieModule } from './modules/movie/movie.module';
     TypeOrmModule.forRootAsync({
       inject: [typeormConfig.KEY],
       useFactory: (config: ConfigType<typeof typeormConfig>) => config,
+    }),
+    CacheModule.register({
+      isGlobal: true
     }),
     UserModule,
     RoleModule,
