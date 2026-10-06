@@ -15,6 +15,8 @@ import { LoggerModule } from './modules/logger/logger.module';
 import { ApiKeyMiddleware } from './modules/auth/middleware/api-key.middleware';
 import { UploadModule } from './modules/upload/upload.module';
 import { loggerConfig } from './config/logger.config';
+import { TmdbModule } from './modules/tmdb/tmdb.module';
+import { MovieModule } from './modules/movie/movie.module';
 
 @Module({
   imports: [
@@ -35,7 +37,9 @@ import { loggerConfig } from './config/logger.config';
     UserRoleModule,
     AuthModule,
     LoggerModule,
-    UploadModule
+    UploadModule,
+    TmdbModule,
+    MovieModule
   ],
   controllers: [AppController],
   providers: [AppService, UserRepository],
