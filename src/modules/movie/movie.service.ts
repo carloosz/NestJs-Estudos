@@ -3,6 +3,7 @@ import { TmdbService } from '../tmdb/tmdb.service';
 import { TmdbMovieSummary } from '../tmdb/tmdb.types';
 
 const IMG = 'https://image.tmdb.org/t/p';
+const MIN_VOTES = 20;
 
 const img = (path: string | null, size: string) =>
    path ? `${IMG}/${size}${path}` : null;
@@ -16,7 +17,10 @@ export class MovieService {
          id: m.id,
          title: m.title,
          year: m.release_date?.slice(0, 4) ?? null,
-         rating: Math.round(m.vote_average * 10) / 10 / 2,
+         rating:
+            m.vote_count >= MIN_VOTES
+               ? Math.round((m.vote_average / 2) * 10) / 10
+               : null,
          poster: img(m.poster_path, 'w500'),
          backdrop: img(m.backdrop_path, 'w1280'),
       };
@@ -83,5 +87,33 @@ export class MovieService {
       const trending = await this.tmdb.trending();
       const first = trending.results[0];
       return this.details(first.id);
+   }
+
+   async inTheaters() {
+      const [now, soon] = await Promise.all([
+         this.tmdb.nowPlaying(),
+         this.tmdb.upcoming(),
+      ]);
+
+      const nowItems = now.results.slice(0, 3);
+      const nowIds = new Set(nowItems.map((m) => m.id));
+
+      // upcoming pode repetir filme que já está em cartaz
+      const soonItems = soon.results
+         .filter((m) => !nowIds.has(m.id))
+         .slice(0, 2);
+
+      const items = [
+         ...nowItems.map((m) => ({
+            ...this.toSummary(m),
+            status: 'now_playing' as const,
+         })),
+         ...soonItems.map((m) => ({
+            ...this.toSummary(m),
+            status: 'upcoming' as const,
+         })),
+      ];
+
+      return items;
    }
 }

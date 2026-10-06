@@ -43,6 +43,13 @@ export class MovieController {
       return this.movieService.featured();
    }
 
+   @UseInterceptors(CacheInterceptor)
+   @CacheTTL(6 * 60 * 60 * 1000)
+   @Get('in-theaters')
+   inTheaters() {
+      return this.movieService.inTheaters();
+   }
+
    @ApiOperation({ summary: 'Get movie details' })
    @UseInterceptors(CacheInterceptor)
    @CacheTTL(60 * 60 * 1 * 1000) // deixar cacheado por 1h
