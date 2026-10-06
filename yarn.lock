@@ -1063,6 +1063,11 @@
     preview-email "^3.1.1"
     pug "^3.0.4"
 
+"@nestjs/axios@^12.0.1":
+  version "12.0.1"
+  resolved "https://registry.yarnpkg.com/@nestjs/axios/-/axios-12.0.1.tgz#6eb51a921f0cf33c3c531bc97f5b4a33b4e9b36e"
+  integrity sha512-Sqp14ZDrsNT96S9obtmQVzN1PLZ+FL0hnUEUjpOOtjYcGW30Knr9vV4goky/bPYPUxSCCFoXp+biRUyafkLFLA==
+
 "@nestjs/cli@^11.0.0":
   version "11.0.24"
   resolved "https://registry.yarnpkg.com/@nestjs/cli/-/cli-11.0.24.tgz#afcff6ecab265e31abf539126ff2a6e9414f030d"
