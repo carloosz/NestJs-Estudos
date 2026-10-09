@@ -5,6 +5,7 @@ import { TmdbMovieDetails, TmdbMovieSummary, TmdbPaginated } from './tmdb.types'
 import { AxiosError } from 'axios';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
+import { TmdbCrewMember, TmdbMovieCard } from './tmdb.types';
 
 const HOUR = 60 * 60 * 1000;
 
@@ -74,7 +75,9 @@ export class TmdbService {
 
    details(id: number) {
       return this.cached(`tmdb:details:${id}`, 12 * HOUR, () =>
-         this.get<TmdbMovieDetails>(`/movie/${id}`, { append_to_response: 'credits,videos' }),
+         this.get<TmdbMovieDetails>(`/movie/${id}`, {
+            append_to_response: 'credits,videos',
+         }),
       );
    }
 
@@ -88,5 +91,22 @@ export class TmdbService {
       return this.cached(`tmdb:movie:${id}`, 24 * HOUR, () =>
          this.get<TmdbMovieSummary>(`/movie/${id}`),
       );
+   }
+
+   cardWithDirector(id: number) {
+      return this.cached(`tmdb:card:${id}`, 24 * HOUR, async () => {
+         const m = await this.get<
+            TmdbMovieSummary & { credits: { crew: TmdbCrewMember[] } }
+         >(`/movie/${id}`, { append_to_response: 'credits' });
+
+         return {
+            id: m.id,
+            title: m.title,
+            release_date: m.release_date,
+            poster_path: m.poster_path,
+            director:
+               m.credits.crew.find((c) => c.job === 'Director')?.name ?? null,
+         } satisfies TmdbMovieCard;
+      });
    }
 }

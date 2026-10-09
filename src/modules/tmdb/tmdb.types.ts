@@ -58,3 +58,16 @@ export interface TmdbMovieDetails extends TmdbMovieSummary {
     results: TmdbVideo[];
   };
 }
+
+export interface TmdbMovieCard {
+  id: number;
+  title: string;
+  release_date: string;
+  poster_path: string | null;
+  director: string | null;
+}
+
+export type TmdbListItem = Pick<
+  TmdbMovieSummary,
+  'id' | 'title' | 'release_date' | 'poster_path'
+> & { director?: string | null }

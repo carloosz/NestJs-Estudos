@@ -2,11 +2,12 @@ import { Injectable, BadRequestException, ConflictException, NotFoundException }
 import { TmdbService } from '../tmdb/tmdb.service';
 import { RateMovieDto } from './dto/rate-movie.dto';
 import { UserMovie } from './entities/user-movie.entity';
-import { Not, Repository, IsNull } from 'typeorm';
+import { Not, Repository, IsNull, FindOptionsOrder, FindOptionsWhere, MoreThanOrEqual } from 'typeorm';
 import { UserMovieStateDto } from './dto/user-movie-state.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { tmdbImage } from '../../common/tmdb-image';
 import { User } from '../user/entities/user.entity';
+import { TmdbListItem } from '../tmdb/tmdb.types';
 
 @Injectable()
 export class UserMovieService {
@@ -17,7 +18,6 @@ export class UserMovieService {
       @InjectRepository(User)
       private readonly userRepository: Repository<User>,
    ) {}
-
 
    private async getOrCreate(userId: string, tmdbId: number) {
       return (
@@ -49,6 +49,59 @@ export class UserMovieService {
          inWatchlist: !!um?.watchlistedAt,
          rating: um?.rating ?? null,
          review: um?.review ?? null,
+      };
+   }
+
+   private async listMovies<E extends object>(
+      where: FindOptionsWhere<UserMovie>,
+      order: FindOptionsOrder<UserMovie>,
+      page: number,
+      limit: number,
+      extra: (row: UserMovie) => E,
+      withDirector = false,
+   ) {
+      const exists = await this.userRepository.exists({
+         where: { id: where.userId },
+      });
+      if (!exists) {
+         throw new NotFoundException('Usuário não encontrado');
+      }
+
+      const [rows, total] = await this.userMovieRepository.findAndCount({
+         where,
+         order: { ...order, id: 'DESC' },
+         skip: (page - 1) * limit,
+         take: limit,
+      });
+
+      const settled = await Promise.allSettled(
+         rows.map((r): Promise<TmdbListItem> =>
+            withDirector
+               ? this.tmdb.cardWithDirector(r.tmdbId)
+               : this.tmdb.summary(r.tmdbId),
+         ),
+      );
+
+      const results = settled.flatMap((s, i) =>
+         s.status === 'fulfilled'
+            ? [
+                 {
+                    id: s.value.id,
+                    title: s.value.title,
+                    year: s.value.release_date?.slice(0, 4) ?? null,
+                    poster: tmdbImage(s.value.poster_path, 'w342'),
+                    director: s.value.director,
+                    ...extra(rows[i]),
+                 },
+              ]
+            : [],
+      );
+
+      return {
+         page,
+         totalPages: Math.ceil(total / limit),
+         totalResults: total,
+         results,
       };
    }
 
@@ -151,41 +204,67 @@ export class UserMovieService {
       return this.toState(um);
    }
 
-   async getWatchedMovies(userId: string, page: number, limit: number) {
-      const exists = await this.userRepository.existsBy({ id: userId });
-      if (!exists) throw new NotFoundException('Usuário não encontrado')
-
-      const [movies, total] = await this.userMovieRepository.findAndCount({
-         where: { userId, watchedAt: Not(IsNull()) },
-         order: { watchedAt: 'DESC', id: 'DESC' },
-         select: { id: true, tmdbId: true, watchedAt: true },
-         skip: (page - 1) * limit,
-         take: limit,
-      });
-
-      const settled = await Promise.allSettled(
-         movies.map((r) => this.tmdb.summary(r.tmdbId)),
+   getWatched(userId: string, page: number, limit: number) {
+      return this.listMovies(
+         { userId, watchedAt: Not(IsNull()) },
+         { watchedAt: 'DESC' },
+         page,
+         limit,
+         (r) => ({ watchedAt: r.watchedAt }),
       );
+   }
 
-      const results = settled.flatMap((s, i) =>
-         s.status === 'fulfilled'
-            ? [
-                 {
-                    id: s.value.id,
-                    title: s.value.title,
-                    year: s.value.release_date?.slice(0, 4) ?? null,
-                    poster: tmdbImage(s.value.poster_path, 'w342'),
-                    watchedAt: movies[i].watchedAt,
-                 },
-              ]
-            : [],
+   getFavorites(userId: string, page: number, limit: number) {
+      return this.listMovies(
+         { userId, favorite: true },
+         { updatedAt: 'DESC' },
+         page,
+         limit,
+         (r) => ({ favorite: r.favorite }),
       );
+   }
 
-      return {
-         page: page,
-         totalPages: Math.ceil(total / limit),
-         totalResults: total,
-         results: results,
-      };
+   getWatchlist(userId: string, page: number, limit: number) {
+      return this.listMovies(
+         { userId, watchlistedAt: Not(IsNull()) },
+         { watchlistedAt: 'DESC' },
+         page,
+         limit,
+         (r) => ({ watchlistedAt: r.watchlistedAt }),
+         true,
+      );
+   }
+
+   getRateds(userId: string, page: number, limit: number) {
+      return this.listMovies(
+         { userId, ratedAt: Not(IsNull()) },
+         { ratedAt: 'DESC' },
+         page,
+         limit,
+         (r) => ({
+            ratedAt: r.ratedAt,
+            rating: r.rating,
+            review: r.review,
+            favorite: r.favorite,
+            watchedAt: r.watchedAt,
+         }),
+         true,
+      );
+   }
+
+   async getStats(userId: string) {
+      const now = new Date();
+      const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+
+      const [watched, thisYear, rated] = await Promise.all([
+         this.userMovieRepository.countBy({ userId, watchedAt: Not(IsNull()) }),
+         this.userMovieRepository.countBy({
+            userId,
+            watchedAt: MoreThanOrEqual(startOfYear),
+         }),
+         this.userMovieRepository.countBy({ userId, ratedAt: Not(IsNull()) }),
+      ]);
+
+      return { watched, thisYear, rated, followers: 0, following: 0 }; // fazser depois: implementar followers/following
    }
 }

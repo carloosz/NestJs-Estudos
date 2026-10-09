@@ -6,16 +6,60 @@ import { DefaultValuePipe, ParseIntPipe, ParseUUIDPipe } from '@nestjs/common';
 export class ProfileMoviesController {
   constructor(private readonly userMovieService: UserMovieService) {}
 
-   @Get('users/:userId/watched')
+   @Get('watched')
    getWatched(
       @Param('userId', ParseUUIDPipe) userId: string,
       @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
       @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
    ) {
-      return this.userMovieService.getWatchedMovies(
+      return this.userMovieService.getWatched(
          userId,
          Math.max(page, 1),
          Math.min(Math.max(limit, 1), 50),
       );
+   }
+
+   @Get('favorites')
+   getFavorites(
+      @Param('userId', ParseUUIDPipe) userId: string,
+      @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+      @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+   ) {
+      return this.userMovieService.getFavorites(
+         userId,
+         Math.max(page, 1),
+         Math.min(Math.max(limit, 1), 50),
+      );
+   }
+
+   @Get('watchlist')
+   getWatchlist(
+      @Param('userId', ParseUUIDPipe) userId: string,
+      @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+      @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+   ) {
+      return this.userMovieService.getWatchlist(
+         userId,
+         Math.max(page, 1),
+         Math.min(Math.max(limit, 1), 50),
+      );
+   }
+
+   @Get('rateds')
+   getRateds(
+      @Param('userId', ParseUUIDPipe) userId: string,
+      @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+      @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+   ) {
+      return this.userMovieService.getRateds(
+         userId,
+         Math.max(page, 1),
+         Math.min(Math.max(limit, 1), 50),
+      );
+   }
+
+   @Get('stats')
+   getStats(@Param('userId', ParseUUIDPipe) userId: string) {
+      return this.userMovieService.getStats(userId);
    }
 }
