@@ -1,7 +1,8 @@
-import { BadGatewayException, Injectable } from '@nestjs/common';
+import { BadGatewayException, Injectable, NotFoundException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { TmdbMovieDetails, TmdbMovieSummary, TmdbPaginated } from './tmdb.types';
+import { AxiosError } from 'axios';
 
 @Injectable()
 export class TmdbService {
@@ -18,7 +19,10 @@ export class TmdbService {
             }),
          );
          return data;
-      } catch {
+      } catch (e) {
+         if (e instanceof AxiosError && e.response?.status === 404) {
+            throw new NotFoundException('Filme não encontrado na TMDB');
+         }
          throw new BadGatewayException('Erro ao consultar a TMDB');
       }
    }
@@ -47,7 +51,9 @@ export class TmdbService {
    }
 
    details(id: number) {
-      return this.get<TmdbMovieDetails>(`/movie/${id}`, { append_to_response: 'credits,videos' });
+      return this.get<TmdbMovieDetails>(`/movie/${id}`, {
+         append_to_response: 'credits,videos',
+      });
    }
 
    recommendations(id: number) {

@@ -18,6 +18,7 @@ import { loggerConfig } from './config/logger.config';
 import { TmdbModule } from './modules/tmdb/tmdb.module';
 import { MovieModule } from './modules/movie/movie.module';
 import { CacheModule } from '@nestjs/cache-manager';
+import { UserMovieModule } from './modules/user-movie/user-movie.module';
 
 @Module({
   imports: [
@@ -43,7 +44,8 @@ import { CacheModule } from '@nestjs/cache-manager';
     LoggerModule,
     UploadModule,
     TmdbModule,
-    MovieModule
+    MovieModule,
+    UserMovieModule
   ],
   controllers: [AppController],
   providers: [AppService, UserRepository],
