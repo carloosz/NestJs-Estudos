@@ -1,12 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { TmdbService } from '../tmdb/tmdb.service';
 import { TmdbMovieSummary } from '../tmdb/tmdb.types';
+import { tmdbImage } from '../../common/tmdb-image';
 
-const IMG = 'https://image.tmdb.org/t/p';
 const MIN_VOTES = 20;
 
-const img = (path: string | null, size: string) =>
-   path ? `${IMG}/${size}${path}` : null;
+const img = tmdbImage;
 
 @Injectable()
 export class MovieService {

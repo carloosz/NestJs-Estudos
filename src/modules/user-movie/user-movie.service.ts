@@ -1,10 +1,12 @@
-import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { TmdbService } from '../tmdb/tmdb.service';
 import { RateMovieDto } from './dto/rate-movie.dto';
 import { UserMovie } from './entities/user-movie.entity';
 import { Not, Repository, IsNull } from 'typeorm';
 import { UserMovieStateDto } from './dto/user-movie-state.dto';
 import { InjectRepository } from '@nestjs/typeorm';
+import { tmdbImage } from '../../common/tmdb-image';
+import { User } from '../user/entities/user.entity';
 
 @Injectable()
 export class UserMovieService {
@@ -12,7 +14,10 @@ export class UserMovieService {
       private readonly tmdb: TmdbService,
       @InjectRepository(UserMovie)
       private readonly userMovieRepository: Repository<UserMovie>,
+      @InjectRepository(User)
+      private readonly userRepository: Repository<User>,
    ) {}
+
 
    private async getOrCreate(userId: string, tmdbId: number) {
       return (
@@ -147,11 +152,40 @@ export class UserMovieService {
    }
 
    async getWatchedMovies(userId: string, page: number, limit: number) {
+      const exists = await this.userRepository.existsBy({ id: userId });
+      if (!exists) throw new NotFoundException('Usuário não encontrado')
+
       const [movies, total] = await this.userMovieRepository.findAndCount({
          where: { userId, watchedAt: Not(IsNull()) },
-         order: { watchedAt: 'DESC' },
+         order: { watchedAt: 'DESC', id: 'DESC' },
+         select: { id: true, tmdbId: true, watchedAt: true },
          skip: (page - 1) * limit,
          take: limit,
       });
+
+      const settled = await Promise.allSettled(
+         movies.map((r) => this.tmdb.summary(r.tmdbId)),
+      );
+
+      const results = settled.flatMap((s, i) =>
+         s.status === 'fulfilled'
+            ? [
+                 {
+                    id: s.value.id,
+                    title: s.value.title,
+                    year: s.value.release_date?.slice(0, 4) ?? null,
+                    poster: tmdbImage(s.value.poster_path, 'w342'),
+                    watchedAt: movies[i].watchedAt,
+                 },
+              ]
+            : [],
+      );
+
+      return {
+         page: page,
+         totalPages: Math.ceil(total / limit),
+         totalResults: total,
+         results: results,
+      };
    }
 }

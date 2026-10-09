@@ -4,11 +4,13 @@ import { UserMovieController } from './user-movie.controller';
 import { TmdbModule } from '../tmdb/tmdb.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserMovie } from './entities/user-movie.entity';
+import { ProfileMoviesController } from './profile-movies.controller';
+import { User } from '../user/entities/user.entity';
 
 @Module({
-  controllers: [UserMovieController],
-  providers: [UserMovieService],
-  imports: [TypeOrmModule.forFeature([UserMovie]), TmdbModule],
-  exports: [UserMovieService],
+   controllers: [UserMovieController, ProfileMoviesController],
+   providers: [UserMovieService],
+   imports: [TypeOrmModule.forFeature([UserMovie, User]), TmdbModule],
+   exports: [UserMovieService],
 })
 export class UserMovieModule {}

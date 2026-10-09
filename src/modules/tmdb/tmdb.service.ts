@@ -1,12 +1,32 @@
-import { BadGatewayException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadGatewayException, Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { TmdbMovieDetails, TmdbMovieSummary, TmdbPaginated } from './tmdb.types';
 import { AxiosError } from 'axios';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
+
+const HOUR = 60 * 60 * 1000;
 
 @Injectable()
 export class TmdbService {
-   constructor(private readonly http: HttpService) {}
+   constructor(
+      private readonly http: HttpService,
+      @Inject(CACHE_MANAGER) private readonly cache: Cache,
+   ) {}
+
+   private async cached<T>(
+      key: string,
+      ttl: number,
+      fetcher: () => Promise<T>,
+   ): Promise<T> {
+      const hit = await this.cache.get<T>(key);
+      if (hit !== undefined && hit !== null) return hit;
+
+      const data = await fetcher();
+      await this.cache.set(key, data, ttl);
+      return data;
+   }
 
    private async get<T>(
       path: string,
@@ -28,7 +48,9 @@ export class TmdbService {
    }
 
    trending() {
-      return this.get<TmdbPaginated<TmdbMovieSummary>>('/trending/movie/week');
+      return this.cached('tmdb:trending', 1 * HOUR, () =>
+         this.get<TmdbPaginated<TmdbMovieSummary>>('/trending/movie/week'),
+      );
    }
 
    nowPlaying() {
@@ -51,14 +73,20 @@ export class TmdbService {
    }
 
    details(id: number) {
-      return this.get<TmdbMovieDetails>(`/movie/${id}`, {
-         append_to_response: 'credits,videos',
-      });
+      return this.cached(`tmdb:details:${id}`, 12 * HOUR, () =>
+         this.get<TmdbMovieDetails>(`/movie/${id}`, { append_to_response: 'credits,videos' }),
+      );
    }
 
    recommendations(id: number) {
       return this.get<TmdbPaginated<TmdbMovieSummary>>(
          `/movie/${id}/recommendations`,
+      );
+   }
+
+   summary(id: number) {
+      return this.cached(`tmdb:movie:${id}`, 24 * HOUR, () =>
+         this.get<TmdbMovieSummary>(`/movie/${id}`),
       );
    }
 }
