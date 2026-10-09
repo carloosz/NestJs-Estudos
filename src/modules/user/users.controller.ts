@@ -8,6 +8,7 @@ import {
    Param,
    Res,
    UseGuards,
+   ParseUUIDPipe,
 } from '@nestjs/common';
 import { UserService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -104,5 +105,11 @@ export class UserController {
       @Body() changeFilmGenresDto: ChangeFilmGenresDto,
    ) {
       return await this.userService.changeFilmGenres(user.id, changeFilmGenresDto.filmGenres);
+   }
+
+   @ApiOperation({ summary: 'Get any user by id' })
+   @Get(':userId/profile')
+   async getUserProfile(@Param('userId', ParseUUIDPipe) userId: string) {
+      return await this.userService.getUserProfile(userId);
    }
 }

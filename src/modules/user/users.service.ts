@@ -380,4 +380,31 @@ export class UserService {
          );
       }
    }
+
+   async getUserProfile(userId: string): Promise<UserDto> {
+      const user = await this.userRepository.findOne({
+         where: { id: userId },
+         select: {
+            id: true,
+            name: true,
+            nickname: true,
+            bio: true,
+            location: true,
+            filmGenres: true,
+            socialmedia: true,
+            createdAt: true,
+         },
+         relations: {
+            uploads: true,
+         },
+      });
+
+      if (!user) {
+         throw new NotFoundException('User not found');
+      }
+
+      user.uploads = user.uploads.filter((u) => u.active);
+
+      return plainToInstance(UserDto, user);
+   }
 }
