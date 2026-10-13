@@ -2,24 +2,48 @@ import { Injectable } from '@nestjs/common';
 import { TmdbService } from '../tmdb/tmdb.service';
 import { TmdbMovieSummary } from '../tmdb/tmdb.types';
 import { tmdbImage } from '../../common/tmdb-image';
+import { UserMovieService } from '../user-movie/user-movie.service';
 
-const MIN_VOTES = 20;
+const MIN_TMDB_VOTES = 20;
+const MIN_COMMUNITY_VOTES = 3;
+
+type Community = { average: number; count: number } | undefined;
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
 
 const img = tmdbImage;
 
 @Injectable()
 export class MovieService {
-   constructor(private readonly tmdb: TmdbService) {}
+   constructor(
+      private readonly tmdb: TmdbService,
+      private readonly userMovies: UserMovieService,
+   ) {}
 
-   private toSummary(m: TmdbMovieSummary) {
+   private pickRating(m: TmdbMovieSummary, c?: Community) {
+      if (c && c.count >= MIN_COMMUNITY_VOTES) {
+         return {
+            rating: round1(c.average),
+            ratingSource: 'community' as const,
+            ratingCount: c.count,
+         };
+      }
+      if (m.vote_count >= MIN_TMDB_VOTES) {
+         return {
+            rating: round1(m.vote_average / 2),
+            ratingSource: 'tmdb' as const,
+            ratingCount: m.vote_count,
+         };
+      }
+      return { rating: null, ratingSource: null, ratingCount: 0 };
+   }
+
+   private toSummary(m: TmdbMovieSummary, c?: Community) {
       return {
          id: m.id,
          title: m.title,
          year: m.release_date?.slice(0, 4) ?? null,
-         rating:
-            m.vote_count >= MIN_VOTES
-               ? Math.round((m.vote_average / 2) * 10) / 10
-               : null,
+         ...this.pickRating(m, c),
          poster: img(m.poster_path, 'w500'),
          backdrop: img(m.backdrop_path, 'w1280'),
       };
@@ -27,7 +51,13 @@ export class MovieService {
 
    async trending() {
       const data = await this.tmdb.trending();
-      return data.results.slice(1).map((m) => this.toSummary(m)); //puklando o primeiro pq vai ser sempre o filme da semana
+      const movies = data.results.slice(1); // pulando o primeiro, que é o filme da semana
+
+      const ratings = await this.userMovies.getCommunityRatings(
+         movies.map((m) => m.id),
+      );
+
+      return movies.map((m) => this.toSummary(m, ratings.get(m.id)));
    }
 
    async search(query: string, page = 1) {
@@ -50,7 +80,10 @@ export class MovieService {
    }
 
    async details(id: number) {
-      const m = await this.tmdb.details(id);
+      const [m, ratings] = await Promise.all([
+         this.tmdb.details(id),
+         this.userMovies.getCommunityRatings([id]),
+      ]);
 
       const director = m.credits.crew.find((c) => c.job === 'Director');
       const trailer =
@@ -62,7 +95,7 @@ export class MovieService {
          );
 
       return {
-         ...this.toSummary(m), // id, title, year, rating, poster, backdrop
+         ...this.toSummary(m, ratings.get(m.id)), // id, title, year, rating, poster, backdrop
          overview: m.overview,
          tagline: m.tagline,
          runtime: m.runtime, // minutos, o front formata "2h 18min"
@@ -102,13 +135,17 @@ export class MovieService {
          .filter((m) => !nowIds.has(m.id))
          .slice(0, 2);
 
+      const ratings = await this.userMovies.getCommunityRatings(
+         [...nowItems, ...soonItems].map((m) => m.id),
+      );
+
       const items = [
          ...nowItems.map((m) => ({
-            ...this.toSummary(m),
+            ...this.toSummary(m, ratings.get(m.id)),
             status: 'now_playing' as const,
          })),
          ...soonItems.map((m) => ({
-            ...this.toSummary(m),
+            ...this.toSummary(m, ratings.get(m.id)),
             status: 'upcoming' as const,
          })),
       ];

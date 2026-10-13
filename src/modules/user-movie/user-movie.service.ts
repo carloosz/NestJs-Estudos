@@ -267,4 +267,26 @@ export class UserMovieService {
 
       return { watched, thisYear, rated, followers: 0, following: 0 }; // fazser depois: implementar followers/following
    }
+
+   async getCommunityRatings(tmdbIds: number[]) {
+      if (!tmdbIds.length)
+         return new Map<number, { average: number; count: number }>();
+
+      const rows = await this.userMovieRepository
+         .createQueryBuilder('um')
+         .select('um.tmdbId', 'tmdbId')
+         .addSelect('AVG(um.rating)', 'average')
+         .addSelect('COUNT(um.rating)', 'count')
+         .where('um.tmdbId IN (:...ids)', { ids: tmdbIds })
+         .andWhere('um.rating IS NOT NULL')
+         .groupBy('um.tmdbId')
+         .getRawMany<{ tmdbId: number; average: string; count: string }>();
+
+      return new Map(
+         rows.map((r) => [
+            Number(r.tmdbId),
+            { average: Number(r.average), count: Number(r.count) },
+         ]),
+      );
+   }
 }
