@@ -1,9 +1,10 @@
-import { Entity, Column, Unique, JoinColumn, ManyToOne, Check } from 'typeorm';
+import { Entity, Column, Unique, JoinColumn, ManyToOne, Check, Index } from 'typeorm';
 import { CommonEntity } from '../../../common/common.entity';
 import { User } from 'src/modules/user/entities/user.entity';
 
 @Entity('user_movie')
 @Unique(['userId', 'tmdbId'])
+@Index(['tmdbId'])
 @Check(`"rating" IS NULL OR "rating" BETWEEN 1 AND 5`)
 export class UserMovie extends CommonEntity {
    @Column() userId!: string;
