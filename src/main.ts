@@ -4,14 +4,21 @@ import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { LoggerService } from './modules/logger/logger.service';
 import { LoggerSentryTransport } from './modules/logger/transports/logger-sentry.transport';
+import { join } from 'path/win32';
+import { NestExpressApplication } from '@nestjs/platform-express';
+
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  app.useStaticAssets(join(process.cwd(), 'files'), { prefix: '/files' });
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     forbidNonWhitelisted: true,
     transform: true,
   }));
+
+  app.useStaticAssets(join(process.cwd(), 'files'), { prefix: '/files' });
 
   const customLoggerService = app.get(LoggerService);
   const loggerSentryTransport = app.get(LoggerSentryTransport);
