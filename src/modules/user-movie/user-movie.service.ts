@@ -8,8 +8,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { tmdbImage } from '../../common/tmdb-image';
 import { User } from '../user/entities/user.entity';
 import { TmdbListItem } from '../tmdb/tmdb.types';
-import { UserService } from '../user/users.service';
 import { env } from 'process';
+import { ReviewLike } from './entities/review-like.entity';
+import { ReviewSort } from './enum/review-sort.enum';
 @Injectable()
 export class UserMovieService {
    constructor(
@@ -18,7 +19,8 @@ export class UserMovieService {
       private readonly userMovieRepository: Repository<UserMovie>,
       @InjectRepository(User)
       private readonly userRepository: Repository<User>,
-      private readonly userService: UserService,
+      @InjectRepository(ReviewLike)
+      private readonly likeRepository: Repository<ReviewLike>,
    ) {}
 
    private avatarUrl(user?: User) {
@@ -297,19 +299,67 @@ export class UserMovieService {
       );
    }
 
+   private async findReviewsPage(
+      tmdbId: number,
+      page: number,
+      limit: number,
+      sort: ReviewSort,
+   ): Promise<[UserMovie[], number]> {
+      const where = { tmdbId, review: Not(IsNull()) };
+      const offset = (page - 1) * limit;
+
+      if (sort === ReviewSort.Newest) {
+         return this.userMovieRepository.findAndCount({
+            where,
+            order: { ratedAt: 'DESC', id: 'DESC' },
+            skip: offset,
+            take: limit,
+         });
+      }
+
+      // popular: 1) ids da página ordenados por likes
+      const total = await this.userMovieRepository.count({ where });
+
+      const rows = await this.userMovieRepository
+         .createQueryBuilder('um')
+         .select('um.id', 'id')
+         .leftJoin(ReviewLike, 'l', 'l.userMovieId = um.id')
+         .where('um.tmdbId = :tmdbId', { tmdbId })
+         .andWhere('um.review IS NOT NULL')
+         .groupBy('um.id')
+         .orderBy('COUNT(l.id)', 'DESC')
+         .addOrderBy('um.ratedAt', 'DESC')
+         .addOrderBy('um.id', 'DESC')
+         .offset(offset)
+         .limit(limit)
+         .getRawMany<{ id: string }>();
+
+      // 2) carrega as linhas e devolve na mesma ordem dos ids
+      const ids = rows.map((r) => r.id);
+      if (!ids.length) return [[], total];
+
+      const entities = await this.userMovieRepository.findBy({ id: In(ids) });
+      const byId = new Map(entities.map((e) => [e.id, e]));
+      const reviews = ids
+         .map((id) => byId.get(id))
+         .filter((e): e is UserMovie => !!e);
+
+      return [reviews, total];
+   }
+
    async getReviewsByMovie(
       tmdbId: number,
       page: number,
       limit: number,
-      sort: 'newest' | 'popular' = 'newest',
+      sort: ReviewSort,
+      userId?: string,
    ) {
-      const [reviews, totalResults] =
-         await this.userMovieRepository.findAndCount({
-            where: { tmdbId, review: Not(IsNull()) },
-            order: { ratedAt: 'DESC', id: 'DESC' }, // id desempata datas iguais
-            skip: (page - 1) * limit,
-            take: limit,
-         });
+      const [reviews, totalResults] = await this.findReviewsPage(
+         tmdbId,
+         page,
+         limit,
+         sort,
+      );
 
       const base = {
          page,
@@ -325,6 +375,27 @@ export class UserMovieService {
       });
       const byId = new Map(users.map((u) => [u.id, u]));
 
+      const counts = await this.likeRepository
+         .createQueryBuilder('l')
+         .select('l.userMovieId', 'reviewId')
+         .addSelect('COUNT(*)', 'count')
+         .where('l.userMovieId IN (:...ids)', { ids: reviews.map((r) => r.id) })
+         .groupBy('l.userMovieId')
+         .getRawMany<{ reviewId: string; count: string }>();
+
+      const likesById = new Map(
+         counts.map((c) => [c.reviewId, Number(c.count)]),
+      );
+
+      const userLikes = userId
+         ? await this.likeRepository.find({
+              where: { userMovieId: In(reviews.map((r) => r.id)), userId },
+              select: { userMovieId: true },
+           })
+         : [];
+
+      const likedIds = new Set(userLikes.map((l) => l.userMovieId));
+
       const results = reviews.map((r) => {
          const user = byId.get(r.userId);
          return {
@@ -338,10 +409,46 @@ export class UserMovieService {
             favorite: r.favorite,
             review: r.review,
             ratedAt: r.ratedAt,
-            likes: 0,
+            likes: likesById.get(r.id) || 0,
+            liked: likedIds.has(r.id),
          };
       });
 
       return { ...base, results };
+   }
+
+   async likeReview(userId: string, reviewId: string) {
+      const review = await this.userMovieRepository.findOne({
+         where: { id: reviewId },
+         select: { id: true, userId: true, review: true },
+      });
+      if (!review?.review)
+         throw new NotFoundException('Avaliação não encontrada');
+      if (review.userId === userId) {
+         throw new BadRequestException(
+            'Você não pode curtir a própria avaliação',
+         );
+      }
+
+      await this.likeRepository
+         .createQueryBuilder()
+         .insert()
+         .values({ userMovieId: reviewId, userId })
+         .orIgnore() // ON CONFLICT DO NOTHING: segundo clique não dá erro
+         .execute();
+
+      return this.likeState(reviewId, true);
+   }
+
+   async unlikeReview(userId: string, reviewId: string) {
+      await this.likeRepository.delete({ userMovieId: reviewId, userId });
+      return this.likeState(reviewId, false);
+   }
+
+   private async likeState(reviewId: string, liked: boolean) {
+      return {
+         liked,
+         likes: await this.likeRepository.countBy({ userMovieId: reviewId }),
+      };
    }
 }

@@ -7,11 +7,16 @@ import { UserMovie } from './entities/user-movie.entity';
 import { ProfileMoviesController } from './profile-movies.controller';
 import { User } from '../user/entities/user.entity';
 import { UserModule } from '../user/users.module';
+import { ReviewLike } from './entities/review-like.entity';
 
 @Module({
    controllers: [UserMovieController, ProfileMoviesController],
    providers: [UserMovieService],
-   imports: [TypeOrmModule.forFeature([UserMovie, User]), TmdbModule, UserModule],
+   imports: [
+      TypeOrmModule.forFeature([UserMovie, User, ReviewLike]),
+      TmdbModule,
+      UserModule,
+   ],
    exports: [UserMovieService],
 })
 export class UserMovieModule {}

@@ -6,6 +6,7 @@ import {
    Body,
    Delete,
    Get,
+   ParseUUIDPipe,
 } from '@nestjs/common';
 import { UserMovieService } from './user-movie.service';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
@@ -94,5 +95,23 @@ export class UserMovieController {
       @Param('tmdbId', ParseIntPipe) tmdbId: number,
    ) {
       return this.userMovieService.getState(userId, tmdbId);
+   }
+
+   @ApiOperation({ summary: 'Like a review' })
+   @Put('reviews/:reviewId/like')
+   likeReview(
+      @CurrentUser('id', ParseUUIDPipe ) userId: string,
+      @Param('reviewId', ParseUUIDPipe) reviewId: string,
+   ) {
+      return this.userMovieService.likeReview(userId, reviewId);
+   }
+
+   @ApiOperation({ summary: 'Unlike a review' })
+   @Delete('reviews/:reviewId/like')
+   unlikeReview(
+      @CurrentUser('id', ParseUUIDPipe) userId: string,
+      @Param('reviewId', ParseUUIDPipe) reviewId: string,
+   ) {
+      return this.userMovieService.unlikeReview(userId, reviewId);
    }
 }

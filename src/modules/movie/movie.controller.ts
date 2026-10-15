@@ -1,7 +1,10 @@
-import { Controller, Get, Param, ParseIntPipe, Query, DefaultValuePipe } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query, DefaultValuePipe, UseGuards } from '@nestjs/common';
 import { MovieService } from './movie.service';
 import { ApiOperation } from '@nestjs/swagger';
 import { UserMovieService } from '../user-movie/user-movie.service';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth-guard';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { ReviewSort } from '../user-movie/enum/review-sort.enum';
 
 @Controller('movies')
 export class MovieController {
@@ -47,17 +50,22 @@ export class MovieController {
       return this.movieService.details(id);
    }
 
+   @ApiOperation({ summary: 'Get reviews for a specific movie' })
    @Get(':id/reviews')
+   @UseGuards(OptionalJwtAuthGuard)
    reviews(
       @Param('id', ParseIntPipe) id: number,
       @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
       @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+      @Query('sort', new DefaultValuePipe('newest')) sort: ReviewSort,
+      @CurrentUser('id') userId?: string,
    ) {
       return this.userMovieService.getReviewsByMovie(
          id,
          Math.max(page, 1),
          Math.min(Math.max(limit, 1), 50),
-         'newest', // por enquanto fixo
+         sort.trim().toLowerCase() as ReviewSort,
+         userId
       );
    }
 }
