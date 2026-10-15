@@ -2,13 +2,14 @@ import { Injectable, BadRequestException, ConflictException, NotFoundException }
 import { TmdbService } from '../tmdb/tmdb.service';
 import { RateMovieDto } from './dto/rate-movie.dto';
 import { UserMovie } from './entities/user-movie.entity';
-import { Not, Repository, IsNull, FindOptionsOrder, FindOptionsWhere, MoreThanOrEqual } from 'typeorm';
+import { Not, Repository, IsNull, FindOptionsOrder, FindOptionsWhere, MoreThanOrEqual, In } from 'typeorm';
 import { UserMovieStateDto } from './dto/user-movie-state.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { tmdbImage } from '../../common/tmdb-image';
 import { User } from '../user/entities/user.entity';
 import { TmdbListItem } from '../tmdb/tmdb.types';
-
+import { UserService } from '../user/users.service';
+import { env } from 'process';
 @Injectable()
 export class UserMovieService {
    constructor(
@@ -17,7 +18,13 @@ export class UserMovieService {
       private readonly userMovieRepository: Repository<UserMovie>,
       @InjectRepository(User)
       private readonly userRepository: Repository<User>,
+      private readonly userService: UserService,
    ) {}
+
+   private avatarUrl(user?: User) {
+      const photo = user?.uploads.find((u) => u.active && u.type === 'avatar');
+      return photo ? `${env.API_URL}/files/${photo.filename}` : null;
+   }
 
    private async getOrCreate(userId: string, tmdbId: number) {
       return (
@@ -288,5 +295,53 @@ export class UserMovieService {
             { average: Number(r.average), count: Number(r.count) },
          ]),
       );
+   }
+
+   async getReviewsByMovie(
+      tmdbId: number,
+      page: number,
+      limit: number,
+      sort: 'newest' | 'popular' = 'newest',
+   ) {
+      const [reviews, totalResults] =
+         await this.userMovieRepository.findAndCount({
+            where: { tmdbId, review: Not(IsNull()) },
+            order: { ratedAt: 'DESC', id: 'DESC' }, // id desempata datas iguais
+            skip: (page - 1) * limit,
+            take: limit,
+         });
+
+      const base = {
+         page,
+         totalPages: Math.ceil(totalResults / limit),
+         totalResults,
+      };
+      if (!reviews.length) return { ...base, results: [] };
+
+      const users = await this.userRepository.find({
+         where: { id: In(reviews.map((r) => r.userId)) },
+         select: { id: true, nickname: true },
+         relations: { uploads: true },
+      });
+      const byId = new Map(users.map((u) => [u.id, u]));
+
+      const results = reviews.map((r) => {
+         const user = byId.get(r.userId);
+         return {
+            id: r.id,
+            user: {
+               id: r.userId,
+               nickname: user?.nickname ?? null,
+               avatar: this.avatarUrl(user),
+            },
+            rating: r.rating,
+            favorite: r.favorite,
+            review: r.review,
+            ratedAt: r.ratedAt,
+            likes: 0,
+         };
+      });
+
+      return { ...base, results };
    }
 }

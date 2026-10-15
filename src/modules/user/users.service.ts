@@ -21,6 +21,7 @@ import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
 import { MoreThanOrEqual, Not } from 'typeorm';
 import { FilmGenresEnum } from './enum/film-genres.enum';
+import { env } from 'process';
 
 @Injectable()
 export class UserService {
@@ -139,6 +140,10 @@ export class UserService {
       }
       return plainToInstance(UserDto, {
          ...user,
+         uploads: user.uploads.map((upload) => ({
+           ...upload,
+           url: env.API_URL + '/files/' + upload.filename,
+         })),
          roles: user.userRoles.map((userRole) => userRole.role),
       });
    }
