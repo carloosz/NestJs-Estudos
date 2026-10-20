@@ -124,7 +124,6 @@ export class UserController {
       @Param('uploadId', ParseUUIDPipe) uploadId: string,
       @CurrentUser('id', ParseUUIDPipe) userId: string,
    ) {
-      console.log(userId, uploadId);
       return this.userService.setUploadActive(userId, uploadId);
    }
 }
