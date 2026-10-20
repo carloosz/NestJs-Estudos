@@ -22,6 +22,7 @@ import { randomUUID } from 'crypto';
 import { MoreThanOrEqual, Not } from 'typeorm';
 import { FilmGenresEnum } from './enum/film-genres.enum';
 import { env } from 'process';
+import { Upload } from '../upload/entities/upload.entity';
 
 @Injectable()
 export class UserService {
@@ -141,8 +142,8 @@ export class UserService {
       return plainToInstance(UserDto, {
          ...user,
          uploads: user.uploads.map((upload) => ({
-           ...upload,
-           url: env.API_URL + '/files/' + upload.filename,
+            ...upload,
+            url: env.API_URL + '/files/' + upload.filename,
          })),
          roles: user.userRoles.map((userRole) => userRole.role),
       });
@@ -369,7 +370,9 @@ export class UserService {
          );
       }
 
-      if (!Array.from(uniqueGenres).every((genre) => enumValues.includes(genre))) {
+      if (
+         !Array.from(uniqueGenres).every((genre) => enumValues.includes(genre))
+      ) {
          throw new BadRequestException('Invalid film genres');
       }
 
@@ -409,6 +412,40 @@ export class UserService {
       }
 
       user.uploads = user.uploads.filter((u) => u.active);
+
+      return plainToInstance(UserDto, user);
+   }
+
+   async setUploadActive(userId: string, uploadId: string): Promise<UserDto> {
+      const user = await this.userRepository.findOne({
+         where: { id: userId },
+         relations: { uploads: true },
+      });
+      if (!user) throw new NotFoundException('Usuário não encontrado');
+
+      const upload = user.uploads.find((u) => u.id === uploadId);
+      if (!upload)
+         throw new NotFoundException('Erro: Foto ou Banner não encontrado');
+
+      if (!upload.active) {
+         const previous = user.uploads.filter(
+            (u) => u.active && u.type === upload.type && u.id !== upload.id,
+         );
+
+         await this.userRepository.manager.transaction(async (em) => {
+            if (previous.length) {
+               await em.update(
+                  Upload,
+                  { id: In(previous.map((u) => u.id)) },
+                  { active: false },
+               );
+            }
+            await em.update(Upload, { id: upload.id }, { active: true });
+         });
+
+         previous.forEach((u) => (u.active = false));
+         upload.active = true;
+      }
 
       return plainToInstance(UserDto, user);
    }

@@ -11,10 +11,11 @@ import { ConfigType } from '@nestjs/config';
 import { jwtConfig } from 'src/config/jwt.config';
 import { ConfigModule } from '@nestjs/config';
 import { EmailModule } from '../email/email.module';
+import { Upload } from '../upload/entities/upload.entity';
 
 @Module({
   imports: [
-      TypeOrmModule.forFeature([User, UserRole, Role]),
+      TypeOrmModule.forFeature([User, UserRole, Role, Upload]),
       JwtModule.registerAsync({
          imports: [ConfigModule],
          inject: [jwtConfig.KEY],

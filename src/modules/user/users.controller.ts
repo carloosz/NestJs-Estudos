@@ -104,12 +104,27 @@ export class UserController {
       @CurrentUser() user: User,
       @Body() changeFilmGenresDto: ChangeFilmGenresDto,
    ) {
-      return await this.userService.changeFilmGenres(user.id, changeFilmGenresDto.filmGenres);
+      return await this.userService.changeFilmGenres(
+         user.id,
+         changeFilmGenresDto.filmGenres,
+      );
    }
 
    @ApiOperation({ summary: 'Get any user by id' })
    @Get(':userId/profile')
    async getUserProfile(@Param('userId', ParseUUIDPipe) userId: string) {
       return await this.userService.getUserProfile(userId);
+   }
+
+   @ApiOperation({ summary: 'Set active some existing upload' })
+   @Patch(':uploadId/set-upload-active')
+   @UseGuards(JwtAuthGuard, RoleGuard)
+   @Roles(RoleEnum.Authenticated)
+   async setUploadActive(
+      @Param('uploadId', ParseUUIDPipe) uploadId: string,
+      @CurrentUser('id', ParseUUIDPipe) userId: string,
+   ) {
+      console.log(userId, uploadId);
+      return this.userService.setUploadActive(userId, uploadId);
    }
 }
