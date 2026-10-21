@@ -5,6 +5,7 @@ import { UserMovieService } from '../user-movie/user-movie.service';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth-guard';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { ReviewSort } from '../user-movie/enum/review-sort.enum';
+import { Throttle, minutes } from '@nestjs/throttler';
 
 @Controller('movies')
 export class MovieController {
@@ -20,6 +21,7 @@ export class MovieController {
    }
 
    @ApiOperation({ summary: 'Search movies' })
+   @Throttle({ default: { limit: 30, ttl: minutes(1) } })
    @Get('search')
    search(@Query('q') q: string, @Query('page') page?: string) {
       return this.movieService.search(q, page ? Number(page) : 1);
