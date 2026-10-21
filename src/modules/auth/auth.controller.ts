@@ -15,11 +15,13 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { AuthEmailDto } from './dto/auth-email.dto';
 import { AuthUpdatePasswordDto } from './dto/auth-update-password.dto';
+import { Throttle, minutes } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
    constructor(private authService: AuthService) {}
 
+   @Throttle({ default: { limit: 5, ttl: minutes(1) } })
    @UseGuards(LocalAuthGuard)
    @Post('login')
    @HttpCode(200)
@@ -33,6 +35,7 @@ export class AuthController {
       return this.authService.refresh(dto.refreshToken);
    }
 
+   @Throttle({ default: { limit: 10, ttl: minutes(1) } })
    @Post('forgot-password')
    @HttpCode(200)
    @ApiOperation({

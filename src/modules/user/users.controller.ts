@@ -24,6 +24,7 @@ import { Roles } from '../role/decorator/roles.decorator';
 import { RoleEnum } from '../role/enum/role.enum';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ChangeFilmGenresDto } from './dto/change-film-genres.dto';
+import { Throttle, minutes } from '@nestjs/throttler';
 
 @ApiTags('users')
 @Controller('users')
@@ -32,6 +33,7 @@ export class UserController {
 
    @ApiOperation({ summary: 'Create user' })
    @ApiOkResponse({ description: 'User created successfully' })
+   @Throttle({ default: { limit: 5, ttl: minutes(1) } })
    @Post()
    create(@Body() createUserDto: CreateUserDto) {
       return this.userService.create(createUserDto);
@@ -111,6 +113,7 @@ export class UserController {
    }
 
    @ApiOperation({ summary: 'Get any user by id' })
+   @Throttle({ default: { limit: 50, ttl: minutes(1) } })
    @Get(':userId/profile')
    async getUserProfile(@Param('userId', ParseUUIDPipe) userId: string) {
       return await this.userService.getUserProfile(userId);

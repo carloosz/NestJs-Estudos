@@ -10,33 +10,36 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 async function bootstrap() {
    const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  app.useStaticAssets(join(process.cwd(), 'files'), { prefix: '/files' });
+   app.set('trust proxy', 1);
+   app.useStaticAssets(join(process.cwd(), 'files'), { prefix: '/files' });
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }));
+   app.useGlobalPipes(
+      new ValidationPipe({
+         whitelist: true,
+         forbidNonWhitelisted: true,
+         transform: true,
+      }),
+   );
 
-  app.useStaticAssets(join(process.cwd(), 'files'), { prefix: '/files' });
+   app.useStaticAssets(join(process.cwd(), 'files'), { prefix: '/files' });
 
-  const customLoggerService = app.get(LoggerService);
-  const loggerSentryTransport = app.get(LoggerSentryTransport);
+   const customLoggerService = app.get(LoggerService);
+   const loggerSentryTransport = app.get(LoggerSentryTransport);
 
-  customLoggerService.addTransport(loggerSentryTransport);
-  customLoggerService.setContext('bootstrap');
+   customLoggerService.addTransport(loggerSentryTransport);
+   customLoggerService.setContext('bootstrap');
 
-  const docOptions = new DocumentBuilder()
-    .setTitle('User API')
-    .setDescription('API for managing users')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+   const docOptions = new DocumentBuilder()
+      .setTitle('User API')
+      .setDescription('API for managing users')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
 
-  const document = SwaggerModule.createDocument(app, docOptions);
+   const document = SwaggerModule.createDocument(app, docOptions);
 
-  SwaggerModule.setup('api', app, document);
+   SwaggerModule.setup('api', app, document);
 
-  await app.listen(process.env.PORT ?? 3000);
+   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
