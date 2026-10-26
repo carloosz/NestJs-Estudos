@@ -11,6 +11,7 @@ import { TmdbListItem } from '../tmdb/tmdb.types';
 import { env } from 'process';
 import { ReviewLike } from './entities/review-like.entity';
 import { ReviewSort } from './enum/review-sort.enum';
+import { Follow } from '../follow/entities/follow.entity';
 @Injectable()
 export class UserMovieService {
    constructor(
@@ -21,6 +22,8 @@ export class UserMovieService {
       private readonly userRepository: Repository<User>,
       @InjectRepository(ReviewLike)
       private readonly likeRepository: Repository<ReviewLike>,
+      @InjectRepository(Follow)
+      private readonly followRepository: Repository<Follow>,
    ) {}
 
    private avatarUrl(user?: User) {
@@ -265,16 +268,18 @@ export class UserMovieService {
       const now = new Date();
       const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
 
-      const [watched, thisYear, rated] = await Promise.all([
+      const [watched, thisYear, rated, followers, following] = await Promise.all([
          this.userMovieRepository.countBy({ userId, watchedAt: Not(IsNull()) }),
          this.userMovieRepository.countBy({
             userId,
             watchedAt: MoreThanOrEqual(startOfYear),
          }),
          this.userMovieRepository.countBy({ userId, ratedAt: Not(IsNull()) }),
+         this.followRepository.countBy({ following: { id: userId } }),
+         this.followRepository.countBy({ follower: { id: userId } }),
       ]);
 
-      return { watched, thisYear, rated, followers: 0, following: 0 }; // fazser depois: implementar followers/following
+      return { watched, thisYear, rated, followers, following };
    }
 
    async getCommunityRatings(tmdbIds: number[]) {
