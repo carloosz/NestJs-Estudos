@@ -11,24 +11,13 @@ export class ProfileMoviesController {
       @Param('userId', ParseUUIDPipe) userId: string,
       @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
       @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+      @Query('onlyFavorites', new DefaultValuePipe(false)) onlyFavorites: boolean
    ) {
       return this.userMovieService.getWatched(
          userId,
          Math.max(page, 1),
          Math.min(Math.max(limit, 1), 50),
-      );
-   }
-
-   @Get('favorites')
-   getFavorites(
-      @Param('userId', ParseUUIDPipe) userId: string,
-      @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-      @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-   ) {
-      return this.userMovieService.getFavorites(
-         userId,
-         Math.max(page, 1),
-         Math.min(Math.max(limit, 1), 50),
+         onlyFavorites
       );
    }
 

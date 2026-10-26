@@ -216,23 +216,27 @@ export class UserMovieService {
       return this.toState(um);
    }
 
-   getWatched(userId: string, page: number, limit: number) {
+   getWatched(
+      userId: string,
+      page: number,
+      limit: number,
+      onlyFavorites = false,
+   ) {
       return this.listMovies(
-         { userId, watchedAt: Not(IsNull()) },
+         {
+            userId,
+            watchedAt: Not(IsNull()),
+            ...(onlyFavorites && { favorite: true }),
+         },
          { watchedAt: 'DESC' },
          page,
          limit,
-         (r) => ({ watchedAt: r.watchedAt }),
-      );
-   }
-
-   getFavorites(userId: string, page: number, limit: number) {
-      return this.listMovies(
-         { userId, favorite: true },
-         { updatedAt: 'DESC' },
-         page,
-         limit,
-         (r) => ({ favorite: r.favorite }),
+         (r) => ({
+            watchedAt: r.watchedAt,
+            rating: r.rating,
+            favorite: r.favorite,
+            hasReview: !!r.review,
+         }),
       );
    }
 
@@ -268,7 +272,16 @@ export class UserMovieService {
       const now = new Date();
       const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
 
-      const [watched, thisYear, rated, followers, following] = await Promise.all([
+      const [
+         watched,
+         thisYear,
+         rated,
+         followers,
+         following,
+         watchlist,
+         favorites,
+         agg,
+      ] = await Promise.all([
          this.userMovieRepository.countBy({ userId, watchedAt: Not(IsNull()) }),
          this.userMovieRepository.countBy({
             userId,
@@ -277,9 +290,30 @@ export class UserMovieService {
          this.userMovieRepository.countBy({ userId, ratedAt: Not(IsNull()) }),
          this.followRepository.countBy({ following: { id: userId } }),
          this.followRepository.countBy({ follower: { id: userId } }),
+         this.userMovieRepository.countBy({
+            userId,
+            watchlistedAt: Not(IsNull()),
+         }),
+         this.userMovieRepository.countBy({ userId, favorite: true }),
+         this.userMovieRepository
+            .createQueryBuilder('um')
+            .select('AVG(um.rating)', 'avg')
+            .addSelect('MIN(um.watchedAt)', 'since')
+            .where('um.userId = :userId', { userId })
+            .getRawOne<{ avg: string | null; since: Date | null }>(),
       ]);
 
-      return { watched, thisYear, rated, followers, following };
+      return {
+         watched,
+         thisYear,
+         rated,
+         followers,
+         following,
+         watchlist,
+         favorites,
+         averageRating: agg?.avg ? Math.round(Number(agg.avg) * 10) / 10 : null,
+         watchedSince: agg?.since ?? null,
+      };
    }
 
    async getCommunityRatings(tmdbIds: number[]) {
