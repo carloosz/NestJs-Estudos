@@ -16,6 +16,7 @@ import { ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { AuthEmailDto } from './dto/auth-email.dto';
 import { AuthUpdatePasswordDto } from './dto/auth-update-password.dto';
 import { Throttle, minutes } from '@nestjs/throttler';
+import { GoogleLoginDto } from './dto/google-login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -75,5 +76,13 @@ export class AuthController {
       @Body() authUpdatePasswordDto: AuthUpdatePasswordDto,
    ) {
       return this.authService.updatePassword(resetToken, authUpdatePasswordDto);
+   }
+
+   @ApiOperation({ summary: 'Login with Google' })
+   @Throttle({ default: { limit: 10, ttl: minutes(1) } })
+   @HttpCode(200)
+   @Post('google')
+   google(@Body() dto: GoogleLoginDto) {
+      return this.authService.loginWithGoogle(dto.credential);
    }
 }

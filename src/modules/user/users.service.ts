@@ -2,7 +2,7 @@ import {
    BadRequestException,
    Injectable,
    NotFoundException,
-   InternalServerErrorException
+   InternalServerErrorException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -23,6 +23,7 @@ import { MoreThanOrEqual, Not } from 'typeorm';
 import { FilmGenresEnum } from './enum/film-genres.enum';
 import { env } from 'process';
 import { Upload } from '../upload/entities/upload.entity';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class UserService {
@@ -41,46 +42,54 @@ export class UserService {
       this.loggerService.setContext(UserService.name);
    }
 
-   public async create(createUserDto: CreateUserDto): Promise<UserDto> {
-      const email = createUserDto.email.toLowerCase();
+   private async generateNickname(name: string): Promise<string> {
+      const base =
+         name
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9]/g, '')
+            .toLowerCase() || 'user';
 
-      const emailExists = await this.userRepository.findOne({
-         where: { email },
-      });
-      if (emailExists) {
-         throw new BadRequestException('Erro: Dados já cadastrados!');
-      }
-
-      const base = createUserDto.name.replace(/\s+/g, '').toLowerCase();
       let nickname: string;
-      let exists = true;
-
       do {
          nickname = `${base}_${Math.floor(Math.random() * 100000)}`;
-         exists = !!(await this.userRepository.findOne({
-            where: { nickname },
-         }));
-      } while (exists);
+      } while (await this.userRepository.existsBy({ nickname }));
+      return nickname;
+   }
 
+   private async createWithDefaults(data: {
+      name: string;
+      email: string;
+      password: string;
+      googleId?: string;
+      confirmed?: boolean;
+   }) {
       const defaultRole = 'authenticated';
-
       const role = await this.roleRepository.findOneBy({ name: defaultRole });
-      if (!role) {
-         throw new NotFoundException(`Role ${defaultRole} not found`);
-      }
+      if (!role) throw new NotFoundException(`Role ${defaultRole} not found`);
 
-      const userRole = await this.userRoleRepository.create({
-         role,
-      });
+      const userRole = this.userRoleRepository.create({ role });
 
       const user = this.userRepository.create({
-         ...createUserDto,
-         nickname,
-         email: createUserDto.email.toLowerCase(),
+         ...data,
+         nickname: await this.generateNickname(data.name),
          userRoles: [userRole],
       });
 
-      const savedUser = await this.userRepository.save(user);
+      return { user: await this.userRepository.save(user), role };
+   }
+
+   public async create(createUserDto: CreateUserDto): Promise<UserDto> {
+      const email = createUserDto.email.toLowerCase();
+
+      if (await this.userRepository.existsBy({ email })) {
+         throw new BadRequestException('Erro: Dados já cadastrados!');
+      }
+
+      const { user: savedUser, role } = await this.createWithDefaults({
+         ...createUserDto,
+         email,
+      });
 
       const token = this.jwtService.sign(
          { sub: savedUser.id, purpose: 'email-confirmation' },
@@ -91,7 +100,7 @@ export class UserService {
 
       try {
          await this.emailService.send({
-            to: user.email,
+            to: email,
             subject: 'Confirme seu email',
             template: 'confirm-email',
             context: {
@@ -448,5 +457,23 @@ export class UserService {
       }
 
       return plainToInstance(UserDto, user);
+   }
+
+   async createFromGoogle(payload: {
+      sub: string;
+      email: string;
+      name?: string;
+   }) {
+      const email = payload.email.toLowerCase();
+
+      const { user } = await this.createWithDefaults({
+         name: payload.name ?? email.split('@')[0],
+         email,
+         password: randomBytes(32).toString('hex'), // a entity faz o hash, igual ao cadastro
+         googleId: payload.sub,
+         confirmed: true, // o Google já verificou o e-mail
+      });
+
+      return user;
    }
 }

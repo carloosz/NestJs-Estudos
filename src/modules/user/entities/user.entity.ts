@@ -32,7 +32,7 @@ export class User extends CommonEntity implements UserInterface {
    })
    userRoles!: UserRole[];
 
-   @Column({ type: 'boolean', nullable: false, default: false})
+   @Column({ type: 'boolean', nullable: false, default: false })
    confirmed?: boolean;
 
    @OneToMany(() => Upload, (upload) => upload.user)
@@ -55,4 +55,7 @@ export class User extends CommonEntity implements UserInterface {
 
    @Column({ type: 'text', nullable: true })
    filmGenres!: string;
+
+   @Column({ type: 'varchar', nullable: true, unique: true })
+   googleId!: string | null;
 }

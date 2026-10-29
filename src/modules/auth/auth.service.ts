@@ -5,12 +5,19 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { JwtService } from '@nestjs/jwt';
 import { jwtConfig } from 'src/config/jwt.config';
-import type { ConfigType } from '@nestjs/config'
+import type { ConfigType } from '@nestjs/config';
 import { LoggerService } from 'src/modules/logger/logger.service';
 import { User } from 'src/modules/user/entities/user.entity';
 import { SendEmailOptions } from '../email/interfaces/email-options.interface';
 import { EmailService } from '../email/email.service';
 import { AuthUpdatePasswordDto } from './dto/auth-update-password.dto';
+import { env } from 'process';
+import { OAuth2Client, TokenPayload } from 'google-auth-library';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CryptUtil } from 'src/common/utils/crypt.util';
+import { randomBytes } from 'crypto';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class AuthService {
@@ -21,6 +28,8 @@ export class AuthService {
       private config: ConfigType<typeof jwtConfig>,
       private loggerService: LoggerService,
       private emailService: EmailService,
+      @InjectRepository(User)
+      private readonly userRepository: Repository<User>,
    ) {}
 
    async validateUserPassword(
@@ -143,5 +152,60 @@ export class AuthService {
       // don't return anything
       return;
    }
-}
 
+   private readonly googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
+
+   async loginWithGoogle(credential: string) {
+      let payload: TokenPayload | undefined;
+      try {
+         const ticket = await this.googleClient.verifyIdToken({
+            idToken: credential,
+            audience: env.GOOGLE_CLIENT_ID,
+         });
+         payload = ticket.getPayload();
+      } catch {
+         throw new UnauthorizedException('Token do Google inválido');
+      }
+
+      if (!payload?.sub || !payload.email || !payload.email_verified) {
+         throw new UnauthorizedException('Conta Google sem e-mail verificado');
+      }
+
+      const email = payload.email.toLowerCase();
+      let user = await this.userRepository.findOneBy({ googleId: payload.sub });
+
+      if (!user) {
+         user = await this.userRepository.findOneBy({ email });
+
+         if (user) {
+            if (!user.confirmed) {
+               user.password = randomBytes(32).toString('hex');
+            }
+            user.googleId = payload.sub;
+            user.confirmed = true;
+            await this.userRepository.save(user);
+         } else {
+            user = await this.userService.createFromGoogle({
+               sub: payload.sub,
+               email,
+               name: payload.name,
+            });
+         }
+      }
+
+      if (!user.active) throw new UnauthorizedException('Conta desativada');
+
+      const fullUser = await this.userRepository.findOne({
+         where: { id: user.id },
+         relations: { userRoles: { role: true } },
+      });
+      if (!fullUser) throw new UnauthorizedException();
+
+      const dto = plainToInstance(UserDto, {
+         ...fullUser,
+         roles: fullUser.userRoles.map((ur) => ur.role.name),
+      });
+
+      return this.signIn(dto);
+   }
+}
