@@ -23,7 +23,7 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
       await this.checkEmailUniqueness(event);
       if (
          event?.entity?.password &&
-         event.entity.password !== event.databaseEntity.password
+         event.entity.password !== event.databaseEntity?.password
       ) {
          await this.hashInsertedOrUpdatedPassword(event);
       }
