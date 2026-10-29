@@ -1,8 +1,21 @@
-import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+   Injectable,
+   BadRequestException,
+   ConflictException,
+   NotFoundException,
+} from '@nestjs/common';
 import { TmdbService } from '../tmdb/tmdb.service';
 import { RateMovieDto } from './dto/rate-movie.dto';
 import { UserMovie } from './entities/user-movie.entity';
-import { Not, Repository, IsNull, FindOptionsOrder, FindOptionsWhere, MoreThanOrEqual, In } from 'typeorm';
+import {
+   Not,
+   Repository,
+   IsNull,
+   FindOptionsOrder,
+   FindOptionsWhere,
+   MoreThanOrEqual,
+   In,
+} from 'typeorm';
 import { UserMovieStateDto } from './dto/user-movie-state.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { tmdbImage } from '../../common/tmdb-image';
@@ -12,6 +25,8 @@ import { env } from 'process';
 import { ReviewLike } from './entities/review-like.entity';
 import { ReviewSort } from './enum/review-sort.enum';
 import { Follow } from '../follow/entities/follow.entity';
+
+type ReviewFilters = { tmdbId?: number; since?: Date };
 @Injectable()
 export class UserMovieService {
    constructor(
@@ -339,12 +354,16 @@ export class UserMovieService {
    }
 
    private async findReviewsPage(
-      tmdbId: number,
+      filters: ReviewFilters,
       page: number,
       limit: number,
       sort: ReviewSort,
    ): Promise<[UserMovie[], number]> {
-      const where = { tmdbId, review: Not(IsNull()) };
+      const where: FindOptionsWhere<UserMovie> = {
+         review: Not(IsNull()),
+         ...(filters.tmdbId !== undefined && { tmdbId: filters.tmdbId }),
+         ...(filters.since && { ratedAt: MoreThanOrEqual(filters.since) }),
+      };
       const offset = (page - 1) * limit;
 
       if (sort === ReviewSort.Newest) {
@@ -359,12 +378,20 @@ export class UserMovieService {
       // popular: 1) ids da página ordenados por likes
       const total = await this.userMovieRepository.count({ where });
 
-      const rows = await this.userMovieRepository
+      const qb = this.userMovieRepository
          .createQueryBuilder('um')
          .select('um.id', 'id')
          .leftJoin(ReviewLike, 'l', 'l.userMovieId = um.id')
-         .where('um.tmdbId = :tmdbId', { tmdbId })
-         .andWhere('um.review IS NOT NULL')
+         .where('um.review IS NOT NULL');
+
+      if (filters.tmdbId !== undefined) {
+         qb.andWhere('um.tmdbId = :tmdbId', { tmdbId: filters.tmdbId });
+      }
+      if (filters.since) {
+         qb.andWhere('um.ratedAt >= :since', { since: filters.since });
+      }
+
+      const rows = await qb
          .groupBy('um.id')
          .orderBy('COUNT(l.id)', 'DESC')
          .addOrderBy('um.ratedAt', 'DESC')
@@ -394,66 +421,18 @@ export class UserMovieService {
       userId?: string,
    ) {
       const [reviews, totalResults] = await this.findReviewsPage(
-         tmdbId,
+         { tmdbId },
          page,
          limit,
          sort,
       );
 
-      const base = {
+      return {
          page,
          totalPages: Math.ceil(totalResults / limit),
          totalResults,
+         results: await this.buildReviewCards(reviews, userId),
       };
-      if (!reviews.length) return { ...base, results: [] };
-
-      const users = await this.userRepository.find({
-         where: { id: In(reviews.map((r) => r.userId)) },
-         select: { id: true, nickname: true },
-         relations: { uploads: true },
-      });
-      const byId = new Map(users.map((u) => [u.id, u]));
-
-      const counts = await this.likeRepository
-         .createQueryBuilder('l')
-         .select('l.userMovieId', 'reviewId')
-         .addSelect('COUNT(*)', 'count')
-         .where('l.userMovieId IN (:...ids)', { ids: reviews.map((r) => r.id) })
-         .groupBy('l.userMovieId')
-         .getRawMany<{ reviewId: string; count: string }>();
-
-      const likesById = new Map(
-         counts.map((c) => [c.reviewId, Number(c.count)]),
-      );
-
-      const userLikes = userId
-         ? await this.likeRepository.find({
-              where: { userMovieId: In(reviews.map((r) => r.id)), userId },
-              select: { userMovieId: true },
-           })
-         : [];
-
-      const likedIds = new Set(userLikes.map((l) => l.userMovieId));
-
-      const results = reviews.map((r) => {
-         const user = byId.get(r.userId);
-         return {
-            id: r.id,
-            user: {
-               id: r.userId,
-               nickname: user?.nickname ?? null,
-               avatar: this.avatarUrl(user),
-            },
-            rating: r.rating,
-            favorite: r.favorite,
-            review: r.review,
-            ratedAt: r.ratedAt,
-            likes: likesById.get(r.id) || 0,
-            liked: likedIds.has(r.id),
-         };
-      });
-
-      return { ...base, results };
    }
 
    async likeReview(userId: string, reviewId: string) {
@@ -489,5 +468,120 @@ export class UserMovieService {
          liked,
          likes: await this.likeRepository.countBy({ userMovieId: reviewId }),
       };
+   }
+
+   private async loadMovieSummaries(tmdbIds: number[]) {
+      const settled = await Promise.allSettled(
+         [...new Set(tmdbIds)].map((id) => this.tmdb.summary(id)),
+      );
+
+      const byId = new Map<
+         number,
+         { id: number; title: string; poster: string | null }
+      >();
+      for (const s of settled) {
+         if (s.status === 'fulfilled') {
+            byId.set(s.value.id, {
+               id: s.value.id,
+               title: s.value.title,
+               poster: tmdbImage(s.value.poster_path, 'w185'),
+            });
+         }
+      }
+      return byId;
+   }
+
+   private async buildReviewCards(
+      reviews: UserMovie[],
+      viewerId?: string,
+      withMovie = false,
+   ) {
+      if (!reviews.length) return [];
+
+      const reviewIds = reviews.map((r) => r.id);
+
+      const [users, counts, viewerLikes, movieById] = await Promise.all([
+         this.userRepository.find({
+            where: { id: In([...new Set(reviews.map((r) => r.userId))]) },
+            select: { id: true, nickname: true },
+            relations: { uploads: true },
+         }),
+         this.likeRepository
+            .createQueryBuilder('l')
+            .select('l.userMovieId', 'reviewId')
+            .addSelect('COUNT(*)', 'count')
+            .where('l.userMovieId IN (:...ids)', { ids: reviewIds })
+            .groupBy('l.userMovieId')
+            .getRawMany<{ reviewId: string; count: string }>(),
+         viewerId
+            ? this.likeRepository.find({
+                 where: { userMovieId: In(reviewIds), userId: viewerId },
+                 select: { userMovieId: true },
+              })
+            : Promise.resolve([] as ReviewLike[]),
+         withMovie
+            ? this.loadMovieSummaries(reviews.map((r) => r.tmdbId))
+            : Promise.resolve(
+                 new Map<
+                    number,
+                    { id: number; title: string; poster: string | null }
+                 >(),
+              ),
+      ]);
+
+      const userById = new Map(users.map((u) => [u.id, u]));
+      const likesById = new Map(
+         counts.map((c) => [c.reviewId, Number(c.count)]),
+      );
+      const likedIds = new Set(viewerLikes.map((l) => l.userMovieId));
+
+      const cards = reviews.map((r) => {
+         const user = userById.get(r.userId);
+         return {
+            id: r.id, // reviewId, pro botão de curtir
+            user: {
+               id: r.userId,
+               nickname: user?.nickname ?? null,
+               avatar: this.avatarUrl(user),
+            },
+            rating: r.rating,
+            favorite: r.favorite,
+            review: r.review,
+            ratedAt: r.ratedAt,
+            likes: likesById.get(r.id) ?? 0,
+            liked: likedIds.has(r.id),
+            ...(withMovie && { movie: movieById.get(r.tmdbId) ?? null }),
+         };
+      });
+
+      // card sem filme carregado ficaria sem título e pôster: melhor omitir
+      return withMovie ? cards.filter((c) => c.movie) : cards;
+   }
+
+   FEATURED_WINDOW_DAYS = 30;
+
+   async getFeaturedReviews(limit: number, viewerId?: string) {
+      const since = new Date(
+         Date.now() - this.FEATURED_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+      );
+
+      let [reviews] = await this.findReviewsPage(
+         { since },
+         1,
+         limit,
+         ReviewSort.Popular,
+      );
+
+      // app com pouco movimento: completa com as mais curtidas de qualquer época
+      if (reviews.length < limit) {
+         [reviews] = await this.findReviewsPage(
+            {},
+            1,
+            limit,
+            ReviewSort.Popular,
+         );
+      }
+
+      return this.buildReviewCards(reviews, viewerId, true);
    }
 }

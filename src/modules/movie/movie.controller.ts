@@ -1,4 +1,12 @@
-import { Controller, Get, Param, ParseIntPipe, Query, DefaultValuePipe, UseGuards } from '@nestjs/common';
+import {
+   Controller,
+   Get,
+   Param,
+   ParseIntPipe,
+   Query,
+   DefaultValuePipe,
+   UseGuards,
+} from '@nestjs/common';
 import { MovieService } from './movie.service';
 import { ApiOperation } from '@nestjs/swagger';
 import { UserMovieService } from '../user-movie/user-movie.service';
@@ -67,7 +75,20 @@ export class MovieController {
          Math.max(page, 1),
          Math.min(Math.max(limit, 1), 50),
          sort.trim().toLowerCase() as ReviewSort,
-         userId
+         userId,
+      );
+   }
+
+   @ApiOperation({ summary: 'Obter críticas em destaque' })
+   @Get('reviews/featured')
+   @UseGuards(OptionalJwtAuthGuard)
+   featuredReviews(
+      @Query('limit', new DefaultValuePipe(5), ParseIntPipe) limit: number,
+      @CurrentUser('id') userId?: string,
+   ) {
+      return this.userMovieService.getFeaturedReviews(
+         Math.min(Math.max(limit, 1), 20),
+         userId,
       );
    }
 }
