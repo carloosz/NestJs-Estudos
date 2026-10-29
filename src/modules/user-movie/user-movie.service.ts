@@ -41,6 +41,14 @@ export class UserMovieService {
       private readonly followRepository: Repository<Follow>,
    ) {}
 
+   private markWatched(
+      um: UserMovie,
+      movie?: { runtime: number | null } | null,
+   ) {
+      um.watchedAt ??= new Date();
+      if (!um.runtime && movie?.runtime) um.runtime = movie.runtime;
+   }
+
    private avatarUrl(user?: User) {
       const photo = user?.uploads.find((u) => u.active && u.type === 'avatar');
       return photo ? `${env.API_URL}/files/${photo.filename}` : null;
@@ -137,7 +145,8 @@ export class UserMovieService {
          throw new BadRequestException('Informe rating e/ou review');
       }
 
-      await this.tmdb.details(tmdbId); // lanca 404 se o filme não existir
+      const movie =
+         dto.rating || dto.review ? await this.tmdb.details(tmdbId) : null; // lanca 404 se o filme não existir
 
       const userMovie =
          (await this.userMovieRepository.findOneBy({ userId, tmdbId })) ??
@@ -154,7 +163,7 @@ export class UserMovieService {
          userMovie.ratedAt = null;
       } else {
          userMovie.ratedAt = new Date();
-         userMovie.watchedAt ??= new Date();
+         this.markWatched(userMovie, movie);
          userMovie.watchlistedAt = null;
       }
 
@@ -175,24 +184,24 @@ export class UserMovieService {
    }
 
    async setFavorite(userId: string, tmdbId: number, value: boolean) {
-      if (value) await this.tmdb.details(tmdbId);
+      const movie = value ? await this.tmdb.details(tmdbId) : null;
 
       const um = await this.getOrCreate(userId, tmdbId);
       um.favorite = value;
       if (value) {
-         um.watchedAt ??= new Date();
+         this.markWatched(um, movie);
          um.watchlistedAt = null;
       }
       return this.saveOrRemove(um);
    }
 
    async setWatched(userId: string, tmdbId: number, value: boolean) {
-      if (value) await this.tmdb.details(tmdbId);
+      const movie = value ? await this.tmdb.details(tmdbId) : null;
 
       const um = await this.getOrCreate(userId, tmdbId);
 
       if (value) {
-         um.watchedAt ??= new Date();
+         this.markWatched(um, movie);
          um.watchlistedAt = null; // assistido sai da watchlist
       } else {
          // desassistir: favorito e avaliação dependem de "assistido", então saem juntos
@@ -583,5 +592,39 @@ export class UserMovieService {
       }
 
       return this.buildReviewCards(reviews, viewerId, true);
+   }
+
+   BRT_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+   async getMonthStats(userId: string) {
+      // início do mês à meia-noite de Brasília, que são 03:00 UTC
+      const nowBrt = new Date(Date.now() - this.BRT_OFFSET_MS);
+      const startOfMonth = new Date(
+         Date.UTC(nowBrt.getUTCFullYear(), nowBrt.getUTCMonth(), 1) +
+            this.BRT_OFFSET_MS,
+      );
+
+      const [watched, rated, watchlist, sum] = await Promise.all([
+         this.userMovieRepository.countBy({
+            userId,
+            watchedAt: MoreThanOrEqual(startOfMonth),
+         }),
+         this.userMovieRepository.countBy({
+            userId,
+            ratedAt: MoreThanOrEqual(startOfMonth),
+         }),
+         this.userMovieRepository.countBy({
+            userId,
+            watchlistedAt: Not(IsNull()),
+         }),
+         this.userMovieRepository
+            .createQueryBuilder('um')
+            .select('COALESCE(SUM(um.runtime), 0)', 'minutes')
+            .where('um.userId = :userId', { userId })
+            .andWhere('um.watchedAt >= :start', { start: startOfMonth })
+            .getRawOne<{ minutes: string }>(),
+      ]);
+
+      return { watched, rated, watchlist, minutes: Number(sum?.minutes ?? 0) };
    }
 }

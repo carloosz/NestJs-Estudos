@@ -100,7 +100,7 @@ export class UserMovieController {
    @ApiOperation({ summary: 'Like a review' })
    @Put('reviews/:reviewId/like')
    likeReview(
-      @CurrentUser('id', ParseUUIDPipe ) userId: string,
+      @CurrentUser('id', ParseUUIDPipe) userId: string,
       @Param('reviewId', ParseUUIDPipe) reviewId: string,
    ) {
       return this.userMovieService.likeReview(userId, reviewId);
@@ -113,5 +113,11 @@ export class UserMovieController {
       @Param('reviewId', ParseUUIDPipe) reviewId: string,
    ) {
       return this.userMovieService.unlikeReview(userId, reviewId);
+   }
+
+   @ApiOperation({ summary: 'Obter estatísticas do mês' })
+   @Get('me/stats/month')
+   monthStats(@CurrentUser('id') userId: string) {
+      return this.userMovieService.getMonthStats(userId);
    }
 }

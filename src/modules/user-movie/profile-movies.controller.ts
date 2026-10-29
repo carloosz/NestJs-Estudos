@@ -4,20 +4,21 @@ import { DefaultValuePipe, ParseIntPipe, ParseUUIDPipe } from '@nestjs/common';
 
 @Controller('users/:userId')
 export class ProfileMoviesController {
-  constructor(private readonly userMovieService: UserMovieService) {}
+   constructor(private readonly userMovieService: UserMovieService) {}
 
    @Get('watched')
    getWatched(
       @Param('userId', ParseUUIDPipe) userId: string,
       @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
       @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-      @Query('onlyFavorites', new DefaultValuePipe(false)) onlyFavorites: boolean
+      @Query('onlyFavorites', new DefaultValuePipe(false))
+      onlyFavorites: boolean,
    ) {
       return this.userMovieService.getWatched(
          userId,
          Math.max(page, 1),
          Math.min(Math.max(limit, 1), 50),
-         onlyFavorites
+         onlyFavorites,
       );
    }
 

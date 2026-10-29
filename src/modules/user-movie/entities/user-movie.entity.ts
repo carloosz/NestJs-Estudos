@@ -1,4 +1,12 @@
-import { Entity, Column, Unique, JoinColumn, ManyToOne, Check, Index } from 'typeorm';
+import {
+   Entity,
+   Column,
+   Unique,
+   JoinColumn,
+   ManyToOne,
+   Check,
+   Index,
+} from 'typeorm';
 import { CommonEntity } from '../../../common/common.entity';
 import { User } from 'src/modules/user/entities/user.entity';
 
@@ -21,4 +29,7 @@ export class UserMovie extends CommonEntity {
    @ManyToOne(() => User, { onDelete: 'CASCADE' })
    @JoinColumn({ name: 'userId' })
    user!: User;
+
+   @Column({ type: 'smallint', nullable: true })
+   runtime!: number | null; //minutos
 }
