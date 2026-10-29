@@ -27,6 +27,7 @@ import { UserMovieModule } from './modules/user-movie/user-movie.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule, minutes } from '@nestjs/throttler';
 import { FollowModule } from './modules/follow/follow.module';
+import { FeedModule } from './modules/feed/feed.module';
 
 @Module({
    imports: [
@@ -52,6 +53,7 @@ import { FollowModule } from './modules/follow/follow.module';
       MovieModule,
       UserMovieModule,
       FollowModule,
+      FeedModule,
    ],
    controllers: [AppController],
    providers: [

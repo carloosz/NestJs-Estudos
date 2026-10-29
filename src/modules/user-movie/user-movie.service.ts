@@ -491,7 +491,7 @@ export class UserMovieService {
       return byId;
    }
 
-   private async buildReviewCards(
+   async buildReviewCards(
       reviews: UserMovie[],
       viewerId?: string,
       withMovie = false,
